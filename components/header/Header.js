@@ -2,18 +2,9 @@
 import React from 'react'
 import Logo from './logo/Logo';
 import MobileMenuIcon from './mobileMenuIcon/MobileMenuIcon';
-import useRightDrawer from '@/stores/rightDrawer/useRightDrawer';
-import rightDrawerContent from '@/stores/rightDrawer/rightDrawerContent';
+import NavIcons from './navIcons/NavIcons';
 
 export default function Header() {
-  const toggleRightDrawer = useRightDrawer((state) => state.toggleRightDrawer);
-  const setRightDrawerType = rightDrawerContent((state) => state.setRightDrawerType);
-
-
-  const openRightDrawer = () => {
-    setRightDrawerType('Log In');
-    toggleRightDrawer();
-  }
 
   return (
     <header className='page-wrapper h-[70px] brand-bg-color'>
@@ -21,18 +12,16 @@ export default function Header() {
             
 
             {/* Left section - Hamburger menu & Logo*/}
-            <section className='w-[250px] h-full flex justify-start items-center'>
+            <section className='h-full flex justify-start items-center lg:w-[220px]'>
                 <MobileMenuIcon />
                 <Logo />
             </section>
 
             {/* Center section - Search form*/}
-            <section className='bg-white-500 h-full'>hi</section>
+            <section className='bg-white-500 h-[35px] hidden md:block flex-grow bg-white md:mx-[40px] lg:mx-[50px] xl:mx-[60px] 2xl:mx-[70px] rounded-md'>hi</section>
 
             {/* Right section*/}
-            <section className='bg-green-500 w-[250px] h-full' onClick={() => openRightDrawer()}>right</section>
-
-
+            <NavIcons />
         </main>
     </header>
   )

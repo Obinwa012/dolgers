@@ -41,6 +41,16 @@ a {
   background: #00233d;
 }
 
+.brand-accent-color {
+  color: #f0bd2d;
+}
+
+.brand-accent-bg-color {
+  background: #f0bd2d;
+}
+
+
+
 /* Reusable wrappers */
 .page-wrapper {
   width: 100%;
@@ -81,6 +91,10 @@ a {
   }
 
   @media (min-width: 768px) { /* md */
+    layout-wrapper {
+      width: 90%;
+      margin: 0 auto;
+    }
     .dolgers-title {
       font-size: 28px;
     }
@@ -88,7 +102,7 @@ a {
 
   @media (min-width: 1024px) { /* lg */
     .layout-wrapper {
-      width: 95%;
+      width: 90%;
       margin: 0 auto;
     }
     .dolgers-title {
@@ -98,11 +112,11 @@ a {
 
   @media (min-width: 1280px) { /* xl */
     .layout-wrapper {
-      width: 95%;
+      width: 90%;
       margin: 0 auto;
     }
     .dolgers-title {
-      font-size: 32px;
+      font-size: 31px;
     }
   }
 
@@ -112,7 +126,7 @@ a {
       margin: 0 auto; 
     }
     .dolgers-title {
-      font-size: 34px;
+      font-size: 32px;
     }
   }
 }
