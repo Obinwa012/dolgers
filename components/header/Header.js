@@ -12,13 +12,13 @@ export default function Header() {
             
 
             {/* Left section - Hamburger menu & Logo*/}
-            <section className='h-full flex justify-start items-center lg:w-[220px]'>
+            <section className='h-full flex justify-start items-center'>
                 <MobileMenuIcon />
                 <Logo />
             </section>
 
             {/* Center section - Search form*/}
-            <section className='bg-white-500 h-[35px] hidden md:block flex-grow bg-white md:mx-[40px] lg:mx-[50px] xl:mx-[60px] 2xl:mx-[70px] rounded-md'>hi</section>
+            <section className='bg-white-500 h-[40px] hidden md:block flex-grow bg-white md:mx-[40px] lg:mx-[60px] xl:mx-[80px] 2xl:mx-[100px] rounded-md'>hi</section>
 
             {/* Right section*/}
             <NavIcons />

@@ -56,7 +56,7 @@ export default function NavIcons() {
     }
 
   return (
-    <main className={`flex items-center justify-end text-white lg:w-[220px]`}>
+    <main className={`flex items-center justify-end text-white`}>
         <div className={`mr-[32px] hidden ${loading? 'hidden' :  customerData === null? 'hidden' : 'lg:block'}`}><Avatar customerData={customerData}/></div>
         <div className={`mr-[32px] ${loading? 'hidden' :  customerData === null? 'lg:block' : 'hidden'}`}><AuthLinks /></div>
         <div className='mr-[32px]'><Wishlist favorites={customerData !== null? customerData.wishlist : []}/></div>
