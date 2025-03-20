@@ -10,6 +10,7 @@ import useCustomer from '@/stores/customer/useCustomer';
 import useRightDrawer from '@/stores/rightDrawer/useRightDrawer';
 import { validatePassword } from '@/functions/validatePassword';
 import { sendPasswordResetEmail } from 'firebase/auth';
+import useNotification from '@/stores/notification/useNotification';
 
 export default function AuthenticationForms() {
     const [password, setPassword] = useState('');
@@ -23,6 +24,9 @@ export default function AuthenticationForms() {
     const setRightDrawerType = rightDrawerContent((state) => state.setRightDrawerType);
     const setCustomerData = useCustomer((state) => state.setCustomerData);
     const setCustomerDataInLocalStorage = useCustomer((state) => state.setCustomerDataInLocalStorage);
+    const toggleNotification = useNotification((state) => state.toggleNotification);
+    const setNotificationType = useNotification((state) => state.setNotificationType);
+    const setNotificationContent = useNotification((state) => state.setNotificationContent);
 
     const handleClosePage = () => {
       setEmail('');
@@ -46,11 +50,12 @@ export default function AuthenticationForms() {
               const safePassword = password.toString();
               const loggedIn = await login(sanitizedEmail, safePassword);
 
-              console.log(loggedIn);
-
               if(loggedIn !== null && typeof loggedIn === 'object'){
                 setCustomerDataInLocalStorage(loggedIn[0]);
                 setCustomerData(loggedIn[1]);
+                toggleNotification();
+                setNotificationType('success');
+                setNotificationContent('Welcome back, ' + loggedIn[1].name + '! You are now logged in.');
                 handleClosePage();
               } else if(loggedIn === 'auth/invalid-credential' || loggedIn === 'auth/user-not-found'){
                 setErrorMessage('Incorrect username or password. Please try again.');
@@ -73,6 +78,9 @@ export default function AuthenticationForms() {
               if(signedup !== null && typeof signedup === 'object'){
                 setCustomerDataInLocalStorage(signedup[0]);
                 setCustomerData(signedup[1]);
+                toggleNotification();
+                setNotificationType('success');
+                setNotificationContent("Congratulations! You're now part of the [Your Community] community.");
                 handleClosePage();
               } else if(signedup === 'auth/email-already-in-use'){
                 setErrorMessage('Email already in use. Please try again.');

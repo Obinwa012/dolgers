@@ -3,6 +3,7 @@ import { Roboto } from "next/font/google";
 import Header from "@/components/header/Header";
 import LeftDrawer from "@/components/leftDrawer/LeftDrawer";
 import RightDrawer from "@/components/rightDrawer/RightDrawer";
+import Notification from "@/components/notification/Notification";
 
 const roboto = Roboto({
   variable: "--font-roboto",
@@ -45,6 +46,7 @@ export default function RootLayout({ children }) {
         <main className="flex grow">{children}</main>
         <LeftDrawer />
         <RightDrawer />
+        <Notification />
       </body>
     </html>
   );

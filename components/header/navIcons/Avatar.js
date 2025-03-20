@@ -1,9 +1,23 @@
 'use client'
 import Link from 'next/link';
 import React, { useState } from 'react'
+import { auth } from '@/libs/firebase/firebase';
+import useCustomer from '@/stores/customer/useCustomer';
 
 export default function Avatar({ customerData }) {
     const [profileLink, openProfileLink] = useState(false);
+    const clearCustomerData = useCustomer((state) => state.clearCustomerData);
+    const clearCustomerDataInLocalStorage = useCustomer((state) => state.clearCustomerDataInLocalStorage);
+
+    const handleSignOut = () => {
+        try{
+            auth.signOut();
+            clearCustomerData();
+            clearCustomerDataInLocalStorage();
+        }catch(e){
+            auth.signOut();
+        }
+    }
 
   return (
     <div className='relative cursor-pointer' onMouseEnter={()=> openProfileLink(true)} onMouseLeave={()=> openProfileLink(false)}>
@@ -63,7 +77,7 @@ export default function Avatar({ customerData }) {
                     <p className="py-2 px-4 text-sm text-gray-700 hover:scale-105 transition-colors duration-200">Get Help</p>
                 </Link>
                 <div className="flex justify-center">
-                    <p className="py-2 px-4 text-sm text-[#ff3300] font-medium hover:scale-105">Log Out</p>
+                    <p className="py-2 px-4 text-sm text-[#ff3300] font-medium hover:scale-105" onClick={()=> handleSignOut()}>Log Out</p>
                 </div>
                 </nav>
             </div>
