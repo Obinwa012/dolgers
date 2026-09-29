@@ -3,7 +3,7 @@
 import { cert, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { readFileSync } from "node:fs";
-import { brands, categories, posts, products } from "../src/data/catalog.ts";
+import { brands, categories, posts, products, sellers } from "../src/data/catalog.ts";
 
 const keyPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
 if (!keyPath) {
@@ -24,4 +24,7 @@ await write("products", products as never, "slug");
 await write("categories", categories as never, "slug");
 await write("brands", brands as never, "slug");
 await write("posts", posts as never, "slug");
+// Public seller profiles only. The demo sellers get no `sellerAccounts` doc (no owner, no payouts);
+// real sellers are created by approving an application on /admin.
+await write("sellers", sellers as never, "slug");
 console.log("Done.");

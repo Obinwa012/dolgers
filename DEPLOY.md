@@ -67,9 +67,23 @@ and the backend's service account already has Admin SDK access for the checkout 
 Stripe Dashboard → Developers → Webhooks → **Add endpoint**
 - URL: `https://<your-backend-url>/api/stripe/webhook`
 - Events: `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
-  `checkout.session.async_payment_failed`, `checkout.session.expired`
+  `checkout.session.async_payment_failed`, `checkout.session.expired`, `charge.dispute.created`
 - Copy the signing secret (`whsec_...`) into the `STRIPE_WEBHOOK_SECRET` secret, then push (or
   roll out from the console) so the backend picks it up.
+
+## 4b. 👤 Marketplace payouts (Stripe Connect)
+
+1. Stripe Dashboard → **Connect** → get started, choose the **platform** model, and enable
+   **Express** accounts. Fill in the platform profile (Stripe reviews it).
+2. Under Connect settings, set your branding and the redirect domains (your backend URL).
+3. Nothing else to configure in code: sellers start onboarding from `/seller` (identity, business and
+   bank checks happen on Stripe), and payouts go out as transfers when they ship.
+4. Make yourself staff: set the custom claim once with the Admin SDK, e.g.
+   `getAuth().setCustomUserClaims("<your uid>", { admin: true })`, then sign out and in. Approve
+   sellers on `/admin`.
+
+> Transfers use `source_transaction`, so the platform and connected accounts must be in the same
+> region (US platform → US sellers). Cross-border sellers need Stripe's "recipient" service agreement.
 
 ## 5. 👤 Authorized domains
 
@@ -85,13 +99,21 @@ or Google sign-in popups will fail there.
       (`automatic_tax: { enabled: true }`) once your tax registrations are set up.
 - [ ] Custom domain: App Hosting → your backend → Settings → Domains; then update `SITE_URL` and
       Authorized domains.
-- [ ] Watch for orders with a `needsReview` field (amount mismatch, oversold stock, reused first-order code).
+- [ ] Watch for orders with a `needsReview` field (amount mismatch, oversold stock, reused first-order code,
+      card disputes). They're listed on `/admin`.
+- [ ] Replace the placeholder financing message, or remove it, before launch (see README → Marketplace).
+- [ ] Write seller terms (commission, handling times, return obligations, payout reversals) and link them
+      from `/sell`.
 
 ## Order lifecycle
 
 ```
 cart ──POST /api/checkout──▶ order: pending_payment ──Stripe Checkout──▶ webhook ──▶ paid (stock −qty)
+                                     │                                        │    └─▶ sellerOrders (one per seller)
                                      │                                        └──▶ payment_failed
                                      └──── session expires (1 h) ─────────────────▶ canceled
+
+sellerOrder: awaiting_shipment ──seller enters tracking──▶ shipped ──▶ Stripe transfer (net of commission)
+return: requested ──seller──▶ approved (refund + reversal) | rejected ──customer──▶ escalated ──admin──▶ resolved
 ```
 Clients can read their own orders but can't create or edit any (see `firestore.rules`).

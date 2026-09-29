@@ -1,21 +1,27 @@
-import { BadgePercent, ChevronRight, ShieldCheck, Truck, Zap } from "lucide-react";
+import { BadgePercent, Plus, ShieldCheck, Tag, Truck, Zap } from "lucide-react";
 import Link from "next/link";
 import BrandMark from "@/components/BrandMark";
+import AddBundle from "@/components/home/AddBundle";
 import FeaturedTabs from "@/components/home/FeaturedTabs";
+import HeroCarousel, { type HeroSlide } from "@/components/home/HeroCarousel";
 import Reviews from "@/components/home/Reviews";
 import Newsletter from "@/components/Newsletter";
 import ProductCard from "@/components/ProductCard";
 import Rail from "@/components/Rail";
+import Stars from "@/components/Stars";
 import ToolArt, { ICONS } from "@/components/ToolArt";
 import { reviews } from "@/data/catalog";
-import { getBrands, getCategories, getPosts, getProducts } from "@/lib/catalog";
-import type { Brand, IconKey } from "@/lib/types";
+import { getBrands, getCategories, getPosts, getProducts, getSellers, money, onSale } from "@/lib/catalog";
+import { SELF_SELLER } from "@/lib/marketplace";
+import { BUNDLES, toCents } from "@/lib/pricing";
+import type { Brand, IconKey, Product } from "@/lib/types";
+import { DENSE_RAIL } from "@/lib/ui";
 
 export const revalidate = 300;
 
 const perks = [
   { icon: Truck, title: "Free Shipping Over $99", text: "Dispatched same day before 2pm." },
-  { icon: ShieldCheck, title: "3-Year Tool Warranty", text: "On every powered tool we sell." },
+  { icon: ShieldCheck, title: "3-Year Tool Warranty", text: "On power tools sold by Torqline." },
   { icon: Zap, title: "Trade Pricing", text: "Open a free trade account." },
   { icon: BadgePercent, title: "5% Off First Order", text: "Use code FIRSTBUILD at checkout." },
 ];
@@ -39,95 +45,158 @@ const deals = [
 ];
 
 export default async function Home() {
-  const [products, categories, brands, posts] = await Promise.all([
+  const [products, categories, brands, posts, sellers] = await Promise.all([
     getProducts(),
     getCategories(),
     getBrands(),
     getPosts(),
+    getSellers(),
   ]);
   const brandOf = (slug: string) => brands.find((b) => b.slug === slug);
-  const newArrivals = products.filter((p) => p.tags.includes("new")).slice(0, 10);
+  const byId = new Map(products.map((p) => [p.id, p]));
+  const newArrivals = products.filter((p) => p.tags.includes("new")).slice(0, 12);
+  const clearance = products.filter((p) => p.tags.includes("clearance"));
   const tabs = categories.filter((c) =>
     ["power-tools", "hand-tools", "storage", "power-supplies", "lawn-garden"].includes(c.slug),
   );
+  const marketplaceSellers = sellers.filter((s) => s.slug !== SELF_SELLER);
+
+  // Every number in the promo copy is computed from the catalog so it can't drift from real prices.
+  const slides = heroSlides(products, marketplaceSellers.length);
+  const categoryDeals = categories
+    .map((c) => {
+      const onSaleHere = products.filter((p) => p.category === c.slug && onSale(p));
+      return { c, count: onSaleHere.length, pct: Math.max(0, ...onSaleHere.map(maxPercentOff)) };
+    })
+    .filter((d) => d.count > 0)
+    .sort((a, b) => b.pct - a.pct);
+  const bundles = BUNDLES.map((b) => {
+    const items = b.items.map((i) => ({ ...i, product: byId.get(i.productId), variant: byId.get(i.productId)?.variants.find((v) => v.id === i.variantId) }));
+    if (items.some((i) => !i.product || !i.variant || i.product.stock <= 0)) return null;
+    const full = items.reduce((n, i) => n + toCents(i.variant!.price), 0);
+    const saving = Math.round((full * b.percentOff) / 100);
+    return { ...b, items, full, saving };
+  }).filter((b) => b !== null);
 
   return (
     <>
-      {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-r from-[#eef1f3] via-[#e6eaec] to-[#c9d3d8]">
-        <div className="container-x grid min-h-[420px] items-center gap-8 py-12 md:min-h-[520px] md:grid-cols-2">
-          <div className="relative z-10 max-w-xl">
-            <p className="mb-3 font-display uppercase tracking-[0.2em] text-brand-600">Built for the job site</p>
-            <h1 className="font-display text-4xl uppercase leading-[1.05] md:text-6xl">
-              Serious tools.<br />Straight answers.
-            </h1>
-            <p className="mt-5 max-w-md text-muted md:text-lg">
-              Hand-picked power and hand tools, tested by trades, backed by a 3-year warranty
-              and shipped the same day.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/collections/all" className="btn btn-brand px-7">Shop now</Link>
-              <Link href="/collections/all?sale=1" className="btn btn-outline px-7">View deals</Link>
-            </div>
-          </div>
-          <div className="relative mx-auto aspect-square w-full max-w-md">
-            <div className="absolute inset-0 rotate-6 rounded-[2.5rem] bg-accent" />
-            <div className="absolute inset-0 overflow-hidden rounded-[2.5rem] shadow-2xl">
-              <ToolArt icon="drill" tint="#0d6b78" variant="bold" alt="Cordless drill illustration" />
-            </div>
-          </div>
-        </div>
-      </section>
+      <HeroCarousel slides={slides} />
 
       {/* Perks */}
       <section className="border-b bg-white">
-        <ul className="container-x grid grid-cols-1 gap-6 py-7 sm:grid-cols-2 lg:grid-cols-4">
+        <ul className="container-x grid grid-cols-2 gap-4 py-5 lg:grid-cols-4">
           {perks.map(({ icon: Icon, title, text }) => (
-            <li key={title} className="flex items-center gap-4 lg:justify-center">
-              <Icon className="h-9 w-9 shrink-0 text-brand-700" strokeWidth={1.5} />
+            <li key={title} className="flex items-center gap-3 lg:justify-center">
+              <Icon className="h-8 w-8 shrink-0 text-brand-700" strokeWidth={1.5} />
               <div>
-                <p className="font-display text-lg">{title}</p>
-                <p className="text-sm text-muted">{text}</p>
+                <p className="font-display text-sm uppercase md:text-base">{title}</p>
+                <p className="hidden text-xs text-muted sm:block">{text}</p>
               </div>
             </li>
           ))}
         </ul>
       </section>
 
-      {/* Newsletter strip */}
-      <section className="bg-surface">
-        <div className="container-x flex flex-col items-center gap-5 py-10 md:flex-row md:justify-between">
-          <div>
-            <h2 className="font-display text-2xl uppercase md:text-3xl">Want first dibs on deals?</h2>
-            <p className="text-muted">Join the list for flash sales, new releases and trade tips.</p>
+      {/* Deals by category */}
+      {categoryDeals.length > 0 && (
+        <section className="container-x py-10">
+          <div className="mb-6 flex items-end justify-between gap-4">
+            <h2 className="font-display text-2xl uppercase md:text-3xl">Deals by category</h2>
+            <Link href="/collections/all?sale=1" className="text-sm font-semibold text-brand-700 hover:underline">All deals</Link>
           </div>
-          <div className="w-full md:max-w-lg">
-            <Newsletter />
+          <div className="no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 md:mx-0 md:grid md:grid-cols-4 md:px-0 lg:grid-cols-8">
+            {categoryDeals.map(({ c, count, pct }) => {
+              const Icon = ICONS[c.icon];
+              return (
+                <Link
+                  key={c.slug}
+                  href={`/collections/${c.slug}?sale=1`}
+                  className="group relative flex w-36 shrink-0 flex-col overflow-hidden rounded-lg border bg-white p-4 hover:border-ink md:w-auto"
+                >
+                  <span className="font-display text-xs uppercase text-sale">Up to</span>
+                  <span className="font-display text-3xl leading-none text-sale">{pct}% off</span>
+                  <span className="mt-2 text-sm font-semibold">{c.name}</span>
+                  <span className="text-xs text-muted">{count} deal{count === 1 ? "" : "s"}</span>
+                  <Icon aria-hidden className="absolute -bottom-3 -right-3 h-16 w-16 opacity-15 transition group-hover:scale-110" style={{ color: c.tint }} />
+                </Link>
+              );
+            })}
           </div>
+        </section>
+      )}
+
+      {/* Top deals + New arrivals */}
+      <section className="bg-surface py-12">
+        <div className="container-x">
+          <div className="mb-8 inline-flex items-center gap-3 bg-sale py-3 pl-5 pr-14 font-display text-3xl uppercase text-accent [clip-path:polygon(0_0,100%_0,85%_100%,0_100%)] md:text-4xl">
+            <Zap className="h-8 w-8 fill-accent" /> Top deals
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {deals.map((d) => (
+              <Link key={d.big} href={d.href} className={`group relative flex min-h-56 flex-col overflow-hidden rounded-lg bg-gradient-to-br p-6 text-white ${d.bg}`}>
+                <p className="font-display text-4xl uppercase">{d.big}</p>
+                <p className="mt-2 max-w-[16rem] text-white/90">{d.text}</p>
+                <span className="btn btn-light mt-5 w-fit">Shop now</span>
+                {(() => {
+                  const Icon = ICONS[d.icon];
+                  return <Icon className="absolute -bottom-6 -right-6 h-40 w-40 text-white/15 transition group-hover:scale-110" strokeWidth={1} />;
+                })()}
+              </Link>
+            ))}
+          </div>
+
+          <div className="mb-6 mt-14 flex items-end justify-between gap-4">
+            <h2 className="font-display text-2xl uppercase md:text-3xl">New arrivals</h2>
+            <Link href="/collections/all?sort=new" className="text-sm font-semibold text-brand-700 hover:underline">Shop new</Link>
+          </div>
+          <Rail label="New arrivals" itemClass={DENSE_RAIL}>
+            {newArrivals.map((p) => (
+              <ProductCard key={p.id} product={p} brand={brandOf(p.brand)} />
+            ))}
+          </Rail>
         </div>
       </section>
 
-      {/* Promo mosaic */}
-      <section className="container-x py-12 md:py-16">
-        <div className="grid gap-5 md:grid-cols-[1fr_1.25fr_0.75fr]">
-          <div className="grid gap-5">
-            <PromoCard p={promos[0]} brand={brandOf(promos[0].brand)} tall />
-            <PromoCard p={promos[1]} brand={brandOf(promos[1].brand)} />
+      {/* Bundle offers */}
+      {bundles.length > 0 && (
+        <section className="container-x py-12">
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-2">
+            <h2 className="font-display text-2xl uppercase md:text-3xl">Bundle &amp; save</h2>
+            <p className="text-sm text-muted">Savings apply automatically in your cart.</p>
           </div>
-          <div className="grid gap-5">
-            <PromoCard p={promos[2]} brand={brandOf(promos[2].brand)} />
-            <PromoCard p={promos[3]} brand={brandOf(promos[3].brand)} tall />
+          <div className="grid gap-4 lg:grid-cols-3">
+            {bundles.map((b) => (
+              <article key={b.id} className="flex flex-col rounded-xl border bg-white p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="font-display text-xl uppercase">{b.title}</h3>
+                  <span className="shrink-0 rounded bg-sale px-2 py-0.5 text-xs font-bold uppercase text-white">{b.percentOff}% off</span>
+                </div>
+                <p className="mt-1 text-sm text-muted">{b.blurb}</p>
+                <ul className="mt-4 flex items-center gap-2">
+                  {b.items.map((i, k) => (
+                    <li key={i.productId} className="flex items-center gap-2">
+                      {k > 0 && <Plus aria-hidden className="h-4 w-4 text-muted" />}
+                      <Link href={`/products/${i.product!.slug}`} className="block h-20 w-20 overflow-hidden rounded-md border" title={i.product!.title}>
+                        <ToolArt icon={i.product!.icon} tint={i.product!.tint} image={i.product!.image} alt={i.product!.title} />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-4 flex items-baseline gap-2 font-display text-2xl">
+                  <span className="text-sale">{money((b.full - b.saving) / 100)}</span>
+                  <s className="text-sm text-muted">{money(b.full / 100)}</s>
+                </p>
+                <p className="text-sm font-semibold text-sale">Save {money(b.saving / 100)}</p>
+                <AddBundle items={b.items.map(({ productId, variantId }) => ({ productId, variantId }))} className="mt-4 w-full" />
+              </article>
+            ))}
           </div>
-          <div className="grid gap-5">
-            <PromoCard p={promos[4]} brand={brandOf(promos[4].brand)} tall />
-            <PromoCard p={promos[5]} brand={brandOf(promos[5].brand)} />
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Shop by category */}
-      <section className="container-x pb-14">
-        <h2 className="section-title mb-10">Shop by category</h2>
+      <section className="container-x pb-12">
+        <h2 className="mb-6 font-display text-2xl uppercase md:text-3xl">Shop by category</h2>
         <div className="no-scrollbar -mx-4 flex gap-4 overflow-x-auto px-4 md:mx-0 md:grid md:grid-cols-9 md:px-0">
           {categories.map((c) => {
             const Icon = ICONS[c.icon];
@@ -144,59 +213,94 @@ export default async function Home() {
             );
           })}
         </div>
-        <div className="mt-8 text-center">
-          <Link href="/collections/all" className="btn btn-outline">View all <ChevronRight className="h-4 w-4" /></Link>
-        </div>
       </section>
 
-      {/* Top deals + New arrivals */}
-      <section className="bg-surface py-14">
-        <div className="container-x">
-          <div className="mb-8 inline-flex items-center gap-3 bg-sale py-3 pl-5 pr-14 font-display text-3xl uppercase text-accent [clip-path:polygon(0_0,100%_0,85%_100%,0_100%)] md:text-4xl">
-            <Zap className="h-8 w-8 fill-accent" /> Top deals
+      {/* Clearance */}
+      {clearance.length > 0 && (
+        <section className="bg-ink py-12 text-white">
+          <div className="container-x">
+            <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="flex items-center gap-2 font-display uppercase tracking-[0.2em] text-accent"><Tag className="h-4 w-4" /> Clearance</p>
+                <h2 className="font-display text-3xl uppercase md:text-4xl">Last chance, lowest prices</h2>
+                <p className="text-sm text-white/70">Limited stock. Once it&apos;s gone, it&apos;s gone.</p>
+              </div>
+              <Link href="/collections/all?clearance=1" className="btn btn-light">Shop all clearance</Link>
+            </div>
+            <Rail label="Clearance" itemClass={DENSE_RAIL}>
+              {clearance.map((p) => (
+                <ProductCard key={p.id} product={p} brand={brandOf(p.brand)} />
+              ))}
+            </Rail>
           </div>
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {deals.map((d) => (
-              <Link key={d.big} href={d.href} className={`group relative flex min-h-64 flex-col overflow-hidden rounded-lg bg-gradient-to-br p-7 text-white ${d.bg}`}>
-                <p className="font-display text-4xl uppercase">{d.big}</p>
-                <p className="mt-2 max-w-[16rem] text-white/90">{d.text}</p>
-                <span className="btn btn-light mt-5 w-fit">Shop now</span>
-                {(() => {
-                  const Icon = ICONS[d.icon];
-                  return <Icon className="absolute -bottom-6 -right-6 h-40 w-40 text-white/15 transition group-hover:scale-110" strokeWidth={1} />;
-                })()}
-              </Link>
-            ))}
-          </div>
+        </section>
+      )}
 
-          <h2 className="section-title mb-10 mt-20">New arrivals</h2>
-          <Rail label="New arrivals">
-            {newArrivals.map((p) => (
-              <ProductCard key={p.id} product={p} brand={brandOf(p.brand)} />
-            ))}
-          </Rail>
-          <div className="mt-8 text-center">
-            <Link href="/collections/all?sort=new" className="btn btn-outline">Shop new <ChevronRight className="h-4 w-4" /></Link>
+      {/* Promo mosaic */}
+      <section className="container-x py-12">
+        <div className="grid gap-4 md:grid-cols-[1fr_1.25fr_0.75fr]">
+          <div className="grid gap-4">
+            <PromoCard p={promos[0]} brand={brandOf(promos[0].brand)} tall />
+            <PromoCard p={promos[1]} brand={brandOf(promos[1].brand)} />
+          </div>
+          <div className="grid gap-4">
+            <PromoCard p={promos[2]} brand={brandOf(promos[2].brand)} />
+            <PromoCard p={promos[3]} brand={brandOf(promos[3].brand)} tall />
+          </div>
+          <div className="grid gap-4">
+            <PromoCard p={promos[4]} brand={brandOf(promos[4].brand)} tall />
+            <PromoCard p={promos[5]} brand={brandOf(promos[5].brand)} />
           </div>
         </div>
-      </section>
-
-      {/* Two banners */}
-      <section className="container-x grid gap-5 py-12 md:grid-cols-2">
-        <Banner title="High-output batteries" text="Longer runtime and more torque from the latest cell tech." href="/collections/power-supplies" bg="from-cyan-800 to-cyan-500" icon="battery" brand={brandOf("brunn")} />
-        <Banner title="Welding & metalwork" text="Grinders, welders and PPE for clean, safe fabrication." href="/collections/welding" bg="from-orange-900 to-orange-600" icon="flame" brand={brandOf("voltra")} />
       </section>
 
       {/* Featured tabs */}
-      <section className="bg-surface py-14">
+      <section className="bg-surface py-12">
         <div className="container-x">
           <h2 className="section-title mb-6">Featured products</h2>
           <FeaturedTabs tabs={tabs} products={products} brands={brands} />
         </div>
       </section>
 
+      {/* Two banners */}
+      <section className="container-x grid gap-4 py-12 md:grid-cols-2">
+        <Banner title="High-output batteries" text="Longer runtime and more torque from the latest cell tech." href="/collections/power-supplies" bg="from-cyan-800 to-cyan-500" icon="battery" brand={brandOf("brunn")} />
+        <Banner title="Welding & metalwork" text="Grinders, welders and PPE for clean, safe fabrication." href="/collections/welding" bg="from-orange-900 to-orange-600" icon="flame" brand={brandOf("voltra")} />
+      </section>
+
+      {/* Marketplace sellers */}
+      {marketplaceSellers.length > 0 && (
+        <section className="container-x pb-12">
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="font-display text-2xl uppercase md:text-3xl">Shop the marketplace</h2>
+              <p className="text-sm text-muted">Specialist sellers, vetted by Torqline. Returns are backed by us if a seller doesn&apos;t sort it out.</p>
+            </div>
+            <Link href="/sellers" className="text-sm font-semibold text-brand-700 hover:underline">All sellers</Link>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {marketplaceSellers.map((s) => (
+              <Link key={s.slug} href={`/sellers/${s.slug}`} className="flex items-center gap-4 rounded-xl border p-5 hover:border-ink">
+                <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full font-display text-xl text-white" style={{ background: s.color }}>
+                  {s.name.split(/\s+/).map((w) => w[0]).slice(0, 2).join("")}
+                </span>
+                <span>
+                  <span className="block font-display text-lg">{s.name}</span>
+                  <span className="block text-xs text-muted">{s.tagline}</span>
+                  <Stars rating={s.rating} count={s.ratingCount} />
+                </span>
+              </Link>
+            ))}
+          </div>
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-brand-50 p-5">
+            <p><b className="font-display uppercase">Sell on Torqline.</b> <span className="text-muted">Reach trades and serious DIYers with payouts handled for you.</span></p>
+            <Link href="/sell" className="btn btn-brand">Become a seller</Link>
+          </div>
+        </section>
+      )}
+
       {/* Reviews */}
-      <section className="py-14">
+      <section className="bg-surface py-12">
         <div className="container-x">
           <h2 className="section-title mb-10">What the trades say</h2>
           <Reviews reviews={reviews} />
@@ -204,7 +308,7 @@ export default async function Home() {
       </section>
 
       {/* Brands */}
-      <section className="container-x pb-14">
+      <section className="container-x py-12">
         <h2 className="section-title mb-10">Shop by brand</h2>
         <Rail label="Brands" itemClass="w-[70%] sm:w-[40%] md:w-[30%] lg:w-[22%] xl:w-[calc((100%-6.25rem)/6)]">
           {brands.map((b) => {
@@ -219,8 +323,21 @@ export default async function Home() {
         </Rail>
       </section>
 
+      {/* Newsletter strip */}
+      <section className="bg-brand-700 text-white">
+        <div className="container-x flex flex-col items-center gap-5 py-10 md:flex-row md:justify-between">
+          <div>
+            <h2 className="font-display text-2xl uppercase md:text-3xl">Want first dibs on deals?</h2>
+            <p className="text-white/80">Join the list for flash sales, new releases and trade tips.</p>
+          </div>
+          <div className="w-full md:max-w-lg">
+            <Newsletter />
+          </div>
+        </div>
+      </section>
+
       {/* Blog */}
-      <section className="container-x pb-16">
+      <section className="container-x py-14">
         <h2 className="section-title mb-10">From the workshop</h2>
         <div className="grid gap-8 md:grid-cols-3">
           {posts.slice(0, 3).map((p) => (
@@ -241,6 +358,52 @@ export default async function Home() {
       </section>
     </>
   );
+}
+
+const maxPercentOff = (p: Product) =>
+  Math.max(0, ...p.variants.map((v) => (v.compareAtPrice && v.compareAtPrice > v.price ? Math.floor((1 - v.price / v.compareAtPrice) * 100) : 0)));
+const maxSaving = (p: Product) =>
+  Math.max(0, ...p.variants.map((v) => (v.compareAtPrice && v.compareAtPrice > v.price ? v.compareAtPrice - v.price : 0)));
+
+/** Hero slides. Each is dropped if the catalog no longer backs its claim. */
+function heroSlides(products: Product[], sellerCount: number): HeroSlide[] {
+  const slides: HeroSlide[] = [];
+  const special = products.find((p) => p.slug === "voltra-18v-brushless-4-tool-combo-kit" && p.stock > 0 && onSale(p));
+  if (special) {
+    const v = special.variants.reduce((a, b) => (maxSaving({ ...special, variants: [b] }) > maxSaving({ ...special, variants: [a] }) ? b : a));
+    slides.push({
+      id: "special-buy", eyebrow: "Special buy of the day", title: "4 tools. 2 batteries. One price.",
+      text: special.title, callout: money(v.price), calloutNote: `was ${money(v.compareAtPrice!)} · save ${money(v.compareAtPrice! - v.price)}`,
+      cta: "Grab the deal", href: `/products/${special.slug}`, icon: "drill",
+      bg: "radial-gradient(circle at 75% 50%, #b4530955, transparent 55%), linear-gradient(120deg, #111418 30%, #3b1d0a)", accent: "#f5b400",
+    });
+  }
+  const combos = products.filter((p) => p.subcategory === "combo-kits");
+  const comboSave = Math.max(0, ...combos.map(maxSaving));
+  if (comboSave > 0)
+    slides.push({
+      id: "combo-kits", eyebrow: "Combo kit event", title: `Save up to ${money(comboSave).replace(/\.00$/, "")} on combo kits`,
+      text: "Drill, driver and saw bundles with batteries and chargers included. Start a platform for less.",
+      cta: "Shop combo kits", href: "/collections/power-tools?sub=combo-kits", icon: "box",
+      bg: "radial-gradient(circle at 75% 50%, #13808f66, transparent 55%), linear-gradient(120deg, #062f36 30%, #0a5561)", accent: "#f5b400",
+    });
+  const clear = products.filter((p) => p.tags.includes("clearance"));
+  const clearPct = Math.max(0, ...clear.map(maxPercentOff));
+  if (clearPct > 0)
+    slides.push({
+      id: "clearance", eyebrow: "Clearance", title: `Up to ${clearPct}% off, while it lasts`,
+      text: `${clear.length} lines marked down to make room for new stock. Limited quantities.`,
+      cta: "Shop clearance", href: "/collections/all?clearance=1", icon: "ruler",
+      bg: "radial-gradient(circle at 75% 50%, #d6263b55, transparent 55%), linear-gradient(120deg, #111418 30%, #4a0d15)", accent: "#ffffff",
+    });
+  if (sellerCount > 0)
+    slides.push({
+      id: "marketplace", eyebrow: "New: Torqline Marketplace", title: "More sellers. More stock.",
+      text: `Shop ${sellerCount} specialist sellers alongside Torqline, with ratings on every listing and returns backed by us.`,
+      cta: "Meet the sellers", href: "/sellers", icon: "sprout",
+      bg: "radial-gradient(circle at 75% 50%, #4d7c0f66, transparent 55%), linear-gradient(120deg, #0f1f0a 30%, #1f3a0f)", accent: "#a3e635",
+    });
+  return slides;
 }
 
 function PromoCard({ p, brand, tall = false }: { p: Promo; brand?: Brand; tall?: boolean }) {

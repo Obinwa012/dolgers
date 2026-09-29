@@ -1,6 +1,7 @@
 import { CURRENCY, toCents } from "@/lib/pricing";
 import { loadProducts, adminDb, verifyRequestUser } from "@/lib/server/admin";
 import { buildOrder, CheckoutError, parseCheckoutRequest } from "@/lib/server/checkout-core";
+import { writeSellerOrders } from "@/lib/server/marketplace";
 import { demoCheckoutAllowed, siteUrl, stripe } from "@/lib/server/stripe";
 
 /**
@@ -39,6 +40,7 @@ export async function POST(request: Request) {
       if (!demoCheckoutAllowed())
         return Response.json({ error: "Payments aren't configured yet. Please try again later." }, { status: 503 });
       const ref = await db.collection("orders").add({ ...order, status: "placed" });
+      await writeSellerOrders(ref.id, order);
       return Response.json({ orderId: ref.id, demo: true });
     }
 
@@ -46,16 +48,18 @@ export async function POST(request: Request) {
     await ref.set(order);
 
     try {
-      // One-off coupon for the exact discount we computed, so Stripe's total matches ours to the cent.
+      // One-off coupon for the exact discount we computed (bundles + code), so Stripe's total
+      // matches ours to the cent.
+      const discountCents = toCents(order.discount) + toCents(order.bundleDiscount ?? 0);
       const coupon =
-        order.discountCode && order.discount > 0
+        discountCents > 0
           ? await s.coupons.create(
               {
-                amount_off: toCents(order.discount),
+                amount_off: discountCents,
                 currency: CURRENCY,
                 duration: "once",
                 max_redemptions: 1,
-                name: order.discountCode,
+                name: [order.bundleDiscount ? "Bundle savings" : "", order.discountCode ?? ""].filter(Boolean).join(" + "),
                 metadata: { orderId: ref.id },
               },
               { idempotencyKey: `coupon-${ref.id}` },

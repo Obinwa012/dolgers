@@ -8,15 +8,16 @@ import { useAuth } from "@/context/AuthProvider";
 import { useShop } from "@/context/ShopProvider";
 import type { Category } from "@/lib/types";
 import Logo from "./Logo";
-import { ICONS } from "./ToolArt";
+import MegaMenu from "./MegaMenu";
+import ToolArt from "./ToolArt";
 
 const nav = [
-  { href: "/collections/all?sort=new", label: "New In", badge: "New" },
-  { href: "/collections/power-tools", label: "Power Tools" },
-  { href: "/collections/hand-tools", label: "Hand Tools" },
-  { href: "/collections/lawn-garden", label: "Garden" },
   { href: "/collections/all?sale=1", label: "Deals", badge: "Sale", badgeClass: "bg-sale" },
+  { href: "/collections/power-tools?sub=combo-kits", label: "Combo Kits" },
+  { href: "/collections/all?clearance=1", label: "Clearance" },
+  { href: "/collections/all?sort=new", label: "New In", badge: "New" },
   { href: "/brands", label: "Brands" },
+  { href: "/sellers", label: "Sellers" },
   { href: "/blog", label: "Workshop Blog" },
 ];
 
@@ -39,6 +40,13 @@ export default function Header({ categories }: { categories: Category[] }) {
       document.body.style.overflow = "";
     };
   }, [mobileOpen]);
+
+  useEffect(() => {
+    if (!catsOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setCatsOpen(false);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [catsOpen]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,35 +123,19 @@ export default function Header({ categories }: { categories: Category[] }) {
 
       {/* Secondary nav */}
       <div className="hidden border-b border-slate-200 bg-white lg:block">
-        <div className="container-x flex h-14 items-center gap-8">
-          <div className="relative" onMouseLeave={() => setCatsOpen(false)}>
+        <div className="container-x relative flex h-14 items-center gap-8">
+          <div onMouseLeave={() => setCatsOpen(false)}>
             <button
               onClick={() => setCatsOpen((v) => !v)}
               onMouseEnter={() => setCatsOpen(true)}
               aria-expanded={catsOpen}
-              className="flex h-14 items-center gap-3 font-display text-sm uppercase"
+              aria-controls="mega-menu"
+              className="flex h-14 items-center gap-3 bg-brand-700 px-4 font-display text-sm uppercase text-white"
             >
               <Menu className="h-5 w-5" /> Shop all categories
-              <ChevronDown className="h-4 w-4" />
+              <ChevronDown className={`h-4 w-4 transition ${catsOpen ? "rotate-180" : ""}`} />
             </button>
-            {catsOpen && (
-              <div className="absolute left-0 top-full w-72 rounded-b-md border border-slate-200 bg-white py-2 shadow-xl">
-                {categories.map((c) => {
-                  const Icon = ICONS[c.icon];
-                  return (
-                    <Link
-                      key={c.slug}
-                      href={`/collections/${c.slug}`}
-                      onClick={() => setCatsOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-brand-50 hover:text-brand-700"
-                    >
-                      <Icon className="h-4 w-4" style={{ color: c.tint }} />
-                      {c.name}
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
+            {catsOpen && <MegaMenu id="mega-menu" categories={categories} onNavigate={() => setCatsOpen(false)} />}
           </div>
           <nav className="flex items-center gap-7" aria-label="Main">
             {nav.map((n) => (
@@ -163,7 +155,7 @@ export default function Header({ categories }: { categories: Category[] }) {
               </Link>
             ))}
           </nav>
-          <p className="ml-auto text-xs text-muted">Pro support, 7 days: (555) 010-4477</p>
+          <p className="ml-auto hidden text-xs text-muted xl:block">Pro support, 7 days: (555) 010-4477</p>
         </div>
       </div>
 
@@ -191,14 +183,28 @@ export default function Header({ categories }: { categories: Category[] }) {
               ))}
               <p className="px-5 pb-1 pt-5 text-xs font-semibold uppercase text-muted">Categories</p>
               {categories.map((c) => (
-                <Link
-                  key={c.slug}
-                  href={`/collections/${c.slug}`}
-                  onClick={() => setMobileOpen(false)}
-                  className="block px-5 py-3 text-sm"
-                >
-                  {c.name}
-                </Link>
+                <details key={c.slug} className="group">
+                  <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-3 text-sm">
+                    {c.name}
+                    <ChevronDown className="h-4 w-4 text-muted transition group-open:rotate-180" />
+                  </summary>
+                  <div className="grid grid-cols-2 gap-2 px-5 pb-4">
+                    <Link href={`/collections/${c.slug}`} onClick={() => setMobileOpen(false)} className="col-span-2 text-sm font-semibold text-brand-700">
+                      Shop all {c.name}
+                    </Link>
+                    {c.subcategories?.map((s) => (
+                      <Link
+                        key={s.slug}
+                        href={`/collections/${c.slug}?sub=${s.slug}`}
+                        onClick={() => setMobileOpen(false)}
+                        className="flex items-center gap-2 rounded-md bg-surface p-2 text-xs"
+                      >
+                        <span className="h-8 w-8 shrink-0 overflow-hidden rounded"><ToolArt icon={s.icon} tint={c.tint} /></span>
+                        {s.name}
+                      </Link>
+                    ))}
+                  </div>
+                </details>
               ))}
               <Link
                 href={user ? "/account" : "/login"}

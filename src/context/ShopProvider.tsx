@@ -5,7 +5,8 @@ import {
   createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode,
 } from "react";
 import { db } from "@/lib/firebase";
-import type { CartItem, Product } from "@/lib/types";
+import { SELF_SELLER } from "@/lib/marketplace";
+import type { CartItem, Product, Seller } from "@/lib/types";
 import { useAuth } from "./AuthProvider";
 
 const LS_CART = "torqline:cart";
@@ -20,6 +21,8 @@ export interface CartLine extends CartItem {
 
 interface ShopCtx {
   products: Product[];
+  sellers: Seller[];
+  sellerOf: (p: Product) => Seller | undefined;
   cart: CartItem[];
   lines: CartLine[];
   count: number;
@@ -62,7 +65,15 @@ function mergeCarts(a: CartItem[], b: CartItem[]): CartItem[] {
   return out;
 }
 
-export function ShopProvider({ products, children }: { products: Product[]; children: ReactNode }) {
+export function ShopProvider({
+  products,
+  sellers = [],
+  children,
+}: {
+  products: Product[];
+  sellers?: Seller[];
+  children: ReactNode;
+}) {
   const { user } = useAuth();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [wishlist, setWishlist] = useState<string[]>([]);
@@ -161,6 +172,8 @@ export function ShopProvider({ products, children }: { products: Product[]; chil
 
   const value: ShopCtx = {
     products,
+    sellers,
+    sellerOf: (p) => sellers.find((s) => s.slug === (p.seller || SELF_SELLER)),
     cart,
     lines,
     count: lines.reduce((n, l) => n + l.qty, 0),

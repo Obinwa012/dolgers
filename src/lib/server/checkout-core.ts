@@ -1,6 +1,7 @@
 // Pure checkout logic: request validation and server-side pricing.
 // No Firebase or Stripe imports, so it can be unit-tested with plain `node` (see scripts/test-checkout.ts).
-import { DISCOUNT_CODES, normalizeCode, quote, toCents } from "../pricing.ts";
+import { SELF_SELLER } from "../marketplace.ts";
+import { DISCOUNT_CODES, normalizeCode, quote, toCents, type PricedLine } from "../pricing.ts";
 import type { Order, OrderAddress, Product } from "../types.ts";
 
 export const MAX_LINES = 50;
@@ -74,7 +75,7 @@ export interface BuildOrderInput {
 /** Price the order from catalog data the server trusts. Throws CheckoutError on any problem. */
 export function buildOrder({ req, products, uid, email, hasPaidOrder, now }: BuildOrderInput): Order {
   const items: Order["items"] = [];
-  const lines: { unitCents: number; qty: number }[] = [];
+  const lines: PricedLine[] = [];
 
   // Stock is tracked per product, so count every variant of a product against it.
   const qtyByProduct = new Map<string, number>();
@@ -83,7 +84,8 @@ export function buildOrder({ req, products, uid, email, hasPaidOrder, now }: Bui
   for (const it of req.items) {
     const p = products.get(it.productId);
     const v = p?.variants.find((x) => x.id === it.variantId);
-    if (!p || !v) throw new CheckoutError("An item in your cart is no longer available. Please review your cart.", 409);
+    if (!p || !v || (p.listingStatus ?? "active") !== "active")
+      throw new CheckoutError("An item in your cart is no longer available. Please review your cart.", 409);
     const wanted = qtyByProduct.get(p.id) ?? it.qty;
     if (typeof p.stock === "number" && wanted > p.stock)
       throw new CheckoutError(
@@ -91,8 +93,16 @@ export function buildOrder({ req, products, uid, email, hasPaidOrder, now }: Bui
         409,
       );
     const unitCents = toCents(v.price);
-    lines.push({ unitCents, qty: it.qty });
-    items.push({ productId: p.id, variantId: v.id, title: p.title, variantName: v.name, price: unitCents / 100, qty: it.qty });
+    lines.push({ unitCents, qty: it.qty, productId: p.id, variantId: v.id });
+    items.push({
+      productId: p.id,
+      variantId: v.id,
+      title: p.title,
+      variantName: v.name,
+      price: unitCents / 100,
+      qty: it.qty,
+      seller: p.seller || SELF_SELLER,
+    });
   }
 
   if (req.code) {
@@ -106,7 +116,9 @@ export function buildOrder({ req, products, uid, email, hasPaidOrder, now }: Bui
     uid,
     email,
     items,
+    sellers: [...new Set(items.map((i) => i.seller!))],
     subtotal: q.subtotalCents / 100,
+    bundleDiscount: q.bundleCents / 100,
     discount: q.discountCents / 100,
     shipping: q.shippingCents / 100,
     total: q.totalCents / 100,

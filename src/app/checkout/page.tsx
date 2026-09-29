@@ -7,7 +7,7 @@ import { Suspense, useState } from "react";
 import { useAuth } from "@/context/AuthProvider";
 import { useShop } from "@/context/ShopProvider";
 import { money } from "@/lib/catalog";
-import { DISCOUNT_CODES, normalizeCode, quote, toCents } from "@/lib/pricing";
+import { BUNDLES, DISCOUNT_CODES, normalizeCode, quote, toCents } from "@/lib/pricing";
 
 /**
  * Checkout. The totals shown here are a preview only: the browser sends product ids, quantities,
@@ -33,7 +33,7 @@ function Checkout() {
   const [demoOrderId, setDemoOrderId] = useState<string | null>(null);
 
   const q = quote(
-    lines.map((l) => ({ unitCents: toCents(l.price), qty: l.qty })),
+    lines.map((l) => ({ unitCents: toCents(l.price), qty: l.qty, productId: l.productId, variantId: l.variantId })),
     applied,
   );
 
@@ -161,6 +161,12 @@ function Checkout() {
           )}
           <dl className="space-y-2 border-t pt-4 text-sm">
             <div className="flex justify-between"><dt>Subtotal</dt><dd>{money(q.subtotalCents / 100)}</dd></div>
+            {q.bundles.map((b) => (
+              <div key={b.id} className="flex justify-between text-emerald-700">
+                <dt>{BUNDLES.find((x) => x.id === b.id)?.title ?? "Bundle"}{b.sets > 1 ? ` × ${b.sets}` : ""}</dt>
+                <dd>-{money(b.cents / 100)}</dd>
+              </div>
+            ))}
             {q.discountCents > 0 && (
               <div className="flex justify-between text-emerald-700">
                 <dt>Discount ({applied})</dt><dd>-{money(q.discountCents / 100)}</dd>

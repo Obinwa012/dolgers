@@ -4,11 +4,12 @@ import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
 import { LogOut, Package } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import Shipment from "@/components/account/Shipment";
 import { useAuth } from "@/context/AuthProvider";
 import { money } from "@/lib/catalog";
 import { db } from "@/lib/firebase";
-import type { Order, OrderStatus } from "@/lib/types";
+import type { Order, OrderStatus, ReturnRequest, SellerOrder } from "@/lib/types";
 
 const STATUS: Record<OrderStatus, { label: string; cls: string }> = {
   paid: { label: "Paid", cls: "bg-emerald-100 text-emerald-800" },
@@ -23,6 +24,8 @@ export default function AccountPage() {
   const router = useRouter();
   const [orders, setOrders] = useState<Order[] | null>(null);
   const [error, setError] = useState("");
+  const [shipments, setShipments] = useState<(SellerOrder & { id: string })[]>([]);
+  const [returns, setReturns] = useState<(ReturnRequest & { id: string })[]>([]);
   // Set while logging out so the "not signed in → login" redirect below doesn't win the race
   // against router.push("/") (it used to land users on /login?next=/account after logging out).
   const [leaving, setLeaving] = useState(false);
@@ -30,6 +33,22 @@ export default function AccountPage() {
   useEffect(() => {
     if (!loading && !user && !leaving) router.replace("/login?next=/account");
   }, [loading, user, leaving, router]);
+
+  // Per-seller shipments and return requests, reloaded after the customer opens/escalates a return.
+  const loadMarketplace = useCallback(() => {
+    const d = db();
+    if (!user || !d) return;
+    Promise.all([
+      getDocs(query(collection(d, "sellerOrders"), where("uid", "==", user.uid))),
+      getDocs(query(collection(d, "returns"), where("uid", "==", user.uid))),
+    ])
+      .then(([so, rs]) => {
+        setShipments(so.docs.map((x) => ({ ...(x.data() as SellerOrder), id: x.id })));
+        setReturns(rs.docs.map((x) => ({ ...(x.data() as ReturnRequest), id: x.id })).sort((a, b) => b.createdAt - a.createdAt));
+      })
+      .catch((e) => console.warn("[account] marketplace data", e));
+  }, [user]);
+  useEffect(loadMarketplace, [loadMarketplace]);
 
   useEffect(() => {
     const d = db();
@@ -95,11 +114,19 @@ export default function AccountPage() {
                 </span>
                 <span className="font-display text-lg">{money(o.total)}</span>
               </div>
-              <ul className="mt-3 space-y-1 text-sm text-muted">
-                {o.items.map((i) => (
-                  <li key={`${i.productId}-${i.variantId}`}>{i.qty} × {i.title} ({i.variantName})</li>
-                ))}
-              </ul>
+              {shipments.some((s) => s.orderId === o.id) ? (
+                <div className="mt-3 space-y-3">
+                  {shipments.filter((s) => s.orderId === o.id).map((s) => (
+                    <Shipment key={s.id} user={user} s={s} returns={returns.filter((r) => r.sellerOrderId === s.id)} onChange={loadMarketplace} />
+                  ))}
+                </div>
+              ) : (
+                <ul className="mt-3 space-y-1 text-sm text-muted">
+                  {o.items.map((i) => (
+                    <li key={`${i.productId}-${i.variantId}`}>{i.qty} × {i.title} ({i.variantName})</li>
+                  ))}
+                </ul>
+              )}
             </li>
           ))}
         </ul>

@@ -12,7 +12,9 @@ const cols = [
       ["Hand Tools", "/collections/hand-tools"],
       ["Storage", "/collections/storage"],
       ["Deals", "/collections/all?sale=1"],
+      ["Clearance", "/collections/all?clearance=1"],
       ["Brands", "/brands"],
+      ["Marketplace Sellers", "/sellers"],
     ],
   },
   {
@@ -21,6 +23,8 @@ const cols = [
       ["About Torqline", "/pages/about"],
       ["Workshop Blog", "/blog"],
       ["Trade Accounts", "/pages/trade"],
+      ["Sell on Torqline", "/sell"],
+      ["Seller Dashboard", "/seller"],
       ["Careers", "/pages/careers"],
     ],
   },
