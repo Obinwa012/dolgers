@@ -68,9 +68,40 @@ test("request validation", () => {
 });
 
 test("quote() math is exact in cents", () => {
-  assert.deepEqual(quote([]), { subtotalCents: 0, discountCents: 0, shippingCents: 0, totalCents: 0, code: null });
+  assert.deepEqual(quote([]), {
+    subtotalCents: 0, bundleCents: 0, discountCents: 0, shippingCents: 0, totalCents: 0, code: null, bundles: [],
+  });
   const q = quote([{ unitCents: 1_999, qty: 3 }], "FIRSTBUILD");
   assert.equal(q.subtotalCents, 5_997);
   assert.equal(q.discountCents, 300); // 299.85 rounds to 300
   assert.equal(q.totalCents, 5_997 - 300 + 1_200);
+});
+
+test("bundle offers: applied server-side, once per unit, before the code", () => {
+  const line = (productId: string, variantId: string, qty = 1) => ({ productId, variantId, qty });
+  // Jigsaw (169) + twin pack (159) + charger (89) = 417 → 10% = 41.70.
+  const jig = build({
+    items: [line("voltra-js18-brushless-jigsaw", "tool"), line("voltra-5ah-battery-twin", "std"), line("brunn-dual-port-rapid-charger", "std")],
+    address,
+  });
+  // Power-up pair (twin + charger, 15% = 37.20) overlaps the jigsaw pack (41.70); the bigger one wins
+  // and each unit is only counted once.
+  assert.equal(jig.bundleDiscount, 41.7);
+  assert.equal(jig.totalCents, 41_700 - 4_170);
+  // Wrong variant (jigsaw kit) → no jigsaw bundle, but the power-up pair still applies.
+  const kit = build({
+    items: [line("voltra-js18-brushless-jigsaw", "kit"), line("voltra-5ah-battery-twin", "std"), line("brunn-dual-port-rapid-charger", "std")],
+    address,
+  });
+  assert.equal(kit.bundleDiscount, 37.2);
+  // Two sets of the pair; code applies to the post-bundle subtotal.
+  const two = build({ items: [line("voltra-5ah-battery-twin", "std", 2), line("brunn-dual-port-rapid-charger", "std", 3)], address, code: "FIRSTBUILD" });
+  assert.equal(two.bundleDiscount, 74.4);
+  const sub = 2 * 15_900 + 3 * 8_900;
+  assert.equal(two.discount, Math.round((sub - 7_440) * 0.05) / 100);
+  assert.equal(two.totalCents, sub - 7_440 - Math.round((sub - 7_440) * 0.05));
+  // Bundle savings can pull an order under the free-shipping threshold.
+  const q = quote([{ unitCents: 5_000, qty: 1, productId: "voltra-5ah-battery-twin", variantId: "std" }, { unitCents: 5_000, qty: 1, productId: "brunn-dual-port-rapid-charger", variantId: "std" }]);
+  assert.equal(q.bundleCents, 1_500);
+  assert.equal(q.shippingCents, 1_200);
 });

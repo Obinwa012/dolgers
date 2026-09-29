@@ -1,7 +1,7 @@
 import { Zap } from "lucide-react";
 
 const messages = [
-  "Autumn Tool Event: up to 40% off selected kits",
+  "Combo Kit Event: save up to $200 on combo kits",
   "Free shipping on orders over $99",
   "New customers: 5% off with code FIRSTBUILD",
 ];

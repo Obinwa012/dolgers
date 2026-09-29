@@ -1,7 +1,8 @@
 import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 import { db } from "./firebase";
 import * as local from "@/data/catalog";
-import type { Brand, Category, Post, Product } from "./types";
+import { isActive } from "./shopping";
+import type { Brand, Category, Post, Product, Seller } from "./types";
 
 /**
  * Catalog reads. Firestore is the source of truth once seeded (`npm run seed`).
@@ -21,10 +22,13 @@ async function readAll<T>(name: string, fallback: T[]): Promise<T[]> {
   }
 }
 
+/** Listed products, newest first. Unlisted ("inactive") products are left out. */
 export const getProducts = () =>
   readAll<Product>("products", local.products).then((p) =>
-    [...p].sort((a, b) => b.createdAt - a.createdAt),
+    p.filter(isActive).sort((a, b) => b.createdAt - a.createdAt),
   );
+export const getSellers = () =>
+  readAll<Seller>("sellers", local.sellers).then((s) => s.filter((x) => (x.status ?? "active") === "active"));
 export const getCategories = () => readAll<Category>("categories", local.categories);
 export const getBrands = () => readAll<Brand>("brands", local.brands);
 export const getPosts = () =>
@@ -35,7 +39,10 @@ export async function getProduct(slug: string): Promise<Product | undefined> {
   if (d) {
     try {
       const s = await getDoc(doc(d, "products", slug));
-      if (s.exists()) return { id: s.id, ...s.data() } as Product;
+      if (s.exists()) {
+        const p = { id: s.id, ...s.data() } as Product;
+        return isActive(p) ? p : undefined;
+      }
     } catch {
       /* fall through */
     }

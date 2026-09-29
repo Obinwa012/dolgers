@@ -1,19 +1,24 @@
 "use client";
 
-import { Heart, ShieldCheck, Truck } from "lucide-react";
+import { CreditCard, Heart, ShieldCheck, Truck } from "lucide-react";
 import { useState } from "react";
 import { Qty } from "@/components/CartDrawer";
+import DeliveryPromise from "@/components/DeliveryPromise";
 import { useShop } from "@/context/ShopProvider";
 import { money } from "@/lib/catalog";
+import { FREE_SHIPPING, toCents } from "@/lib/pricing";
+import { FINANCING, monthlyPaymentCents } from "@/lib/shopping";
 import type { Product } from "@/lib/types";
 
 export default function BuyBox({ product }: { product: Product }) {
-  const { addToCart, toggleWish, inWishlist } = useShop();
+  const { addToCart, toggleWish, inWishlist, sellerOf } = useShop();
   const [variantId, setVariantId] = useState(product.variants[0].id);
   const [qty, setQty] = useState(1);
   const v = product.variants.find((x) => x.id === variantId)!;
   const sale = v.compareAtPrice && v.compareAtPrice > v.price;
   const wished = inWishlist(product.id);
+  const seller = sellerOf(product);
+  const monthly = monthlyPaymentCents(toCents(v.price));
 
   return (
     <div className="mt-6 space-y-6">
@@ -45,9 +50,26 @@ export default function BuyBox({ product }: { product: Product }) {
         </fieldset>
       )}
 
-      <p className={`text-sm ${product.stock < 10 ? "text-orange-600" : "text-emerald-700"}`}>
-        {product.stock <= 0 ? "Out of stock" : product.stock < 10 ? `Only ${product.stock} left in stock` : "In stock, ships today"}
-      </p>
+      {monthly !== null && (
+        <p className="rounded-md border border-brand-100 bg-brand-50 px-3 py-2 text-sm">
+          <CreditCard className="mr-1.5 inline h-4 w-4 text-brand-700" />
+          As low as <b>{money(monthly / 100)}/mo</b> over {FINANCING.months} months with approved credit.{" "}
+          <span className="text-muted">Rates and terms are set by the lender at checkout.</span>
+        </p>
+      )}
+
+      <div className="space-y-2 rounded-lg border p-4">
+        <p className={`text-sm font-semibold ${product.stock <= 0 ? "text-sale" : product.stock < 10 ? "text-orange-600" : "text-emerald-700"}`}>
+          {product.stock <= 0
+            ? "Out of stock"
+            : product.stock < 10
+              ? `Only ${product.stock} left in stock`
+              : seller && seller.handlingDays > 0
+                ? `In stock, ships in ${seller.handlingDays} business day${seller.handlingDays === 1 ? "" : "s"}`
+                : "In stock, ships today"}
+        </p>
+        <DeliveryPromise seller={seller} inStock={product.stock > 0} />
+      </div>
 
       <div className="flex flex-wrap items-center gap-3">
         <Qty value={qty} onChange={(n) => setQty(Math.max(1, Math.min(99, product.stock > 0 ? product.stock : 99, n)))} />
@@ -65,8 +87,8 @@ export default function BuyBox({ product }: { product: Product }) {
       </div>
 
       <ul className="grid gap-3 rounded-lg bg-surface p-4 text-sm sm:grid-cols-2">
-        <li className="flex items-center gap-2"><Truck className="h-5 w-5 text-brand-700" /> Free shipping over $99</li>
-        <li className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-brand-700" /> 3-year warranty</li>
+        <li className="flex items-center gap-2"><Truck className="h-5 w-5 shrink-0 text-brand-700" /> Free shipping over ${FREE_SHIPPING}</li>
+        <li className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 shrink-0 text-brand-700" /> Secure checkout with Stripe</li>
       </ul>
     </div>
   );

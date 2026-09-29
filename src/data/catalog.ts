@@ -1,17 +1,104 @@
 // Original demo catalog for Torqline. All brands, products and copy are fictional.
 // Imported by the app (fallback when Firestore is empty/unconfigured) and by scripts/seed.ts.
-import type { Brand, Category, Post, Product } from "../lib/types.ts";
+import type { Brand, Category, Post, Product, Seller } from "../lib/types.ts";
 
 export const categories: Category[] = [
-  { slug: "power-tools", name: "Power Tools", icon: "drill", tint: "#0e7490" },
-  { slug: "hand-tools", name: "Hand Tools", icon: "hammer", tint: "#b45309" },
-  { slug: "power-supplies", name: "Power Supplies", icon: "battery", tint: "#15803d" },
-  { slug: "lawn-garden", name: "Lawn & Garden", icon: "sprout", tint: "#4d7c0f" },
-  { slug: "storage", name: "Storage", icon: "box", tint: "#1d4ed8" },
-  { slug: "welding", name: "Welding", icon: "flame", tint: "#c2410c" },
-  { slug: "safety", name: "Safety Gear", icon: "hardhat", tint: "#ca8a04" },
-  { slug: "site-lighting", name: "Site Lighting", icon: "lamp", tint: "#6d28d9" },
-  { slug: "accessories", name: "Accessories", icon: "nut", tint: "#475569" },
+  {
+    slug: "power-tools", name: "Power Tools", icon: "drill", tint: "#0e7490",
+    subcategories: [
+      { slug: "combo-kits", name: "Combo Kits", icon: "box" },
+      { slug: "drills-drivers", name: "Drills & Drivers", icon: "drill" },
+      { slug: "saws", name: "Saws", icon: "saw" },
+      { slug: "nailers", name: "Nailers", icon: "hammer" },
+      { slug: "planers-sanders", name: "Planers & Sanders", icon: "ruler" },
+    ],
+  },
+  {
+    slug: "hand-tools", name: "Hand Tools", icon: "hammer", tint: "#b45309",
+    subcategories: [
+      { slug: "hammers", name: "Hammers", icon: "hammer" },
+      { slug: "sockets-wrenches", name: "Sockets & Wrenches", icon: "wrench" },
+      { slug: "measuring", name: "Measuring & Layout", icon: "ruler" },
+    ],
+  },
+  {
+    slug: "power-supplies", name: "Power Supplies", icon: "battery", tint: "#15803d",
+    subcategories: [
+      { slug: "batteries", name: "Batteries", icon: "battery" },
+      { slug: "chargers", name: "Chargers", icon: "battery" },
+    ],
+  },
+  {
+    slug: "lawn-garden", name: "Lawn & Garden", icon: "sprout", tint: "#4d7c0f",
+    subcategories: [
+      { slug: "mowers", name: "Mowers", icon: "sprout" },
+      { slug: "trimmers", name: "Trimmers & Edgers", icon: "sprout" },
+      { slug: "blowers", name: "Blowers", icon: "fan" },
+    ],
+  },
+  {
+    slug: "storage", name: "Storage", icon: "box", tint: "#1d4ed8",
+    subcategories: [
+      { slug: "tool-chests", name: "Tool Chests & Cabinets", icon: "box" },
+      { slug: "cases-organisers", name: "Cases & Organisers", icon: "box" },
+    ],
+  },
+  {
+    slug: "welding", name: "Welding", icon: "flame", tint: "#c2410c",
+    subcategories: [
+      { slug: "welders", name: "Welders", icon: "flame" },
+      { slug: "grinders", name: "Grinders", icon: "flame" },
+    ],
+  },
+  {
+    slug: "safety", name: "Safety Gear", icon: "hardhat", tint: "#ca8a04",
+    subcategories: [
+      { slug: "head-protection", name: "Head Protection", icon: "hardhat" },
+      { slug: "eye-hearing", name: "Eye & Hearing", icon: "hardhat" },
+    ],
+  },
+  {
+    slug: "site-lighting", name: "Site Lighting", icon: "lamp", tint: "#6d28d9",
+    subcategories: [
+      { slug: "area-lights", name: "Area Lights", icon: "lamp" },
+      { slug: "task-lights", name: "Task Lights", icon: "lamp" },
+    ],
+  },
+  {
+    slug: "accessories", name: "Accessories", icon: "nut", tint: "#475569",
+    subcategories: [
+      { slug: "bits-blades", name: "Bits & Blades", icon: "nut" },
+      { slug: "fasteners", name: "Fasteners", icon: "nut" },
+    ],
+  },
+];
+
+/** Marketplace sellers. "torqline" is first party; the others are fictional third-party vendors. */
+export const sellers: Seller[] = [
+  {
+    slug: "torqline", name: "Torqline", tagline: "Sold and shipped by Torqline",
+    about: "Our own stock, shipped from the Torqline warehouse the same day when you order before 2pm.",
+    rating: 4.8, ratingCount: 12_480, since: "2019-03-01", location: "Austin, TX", color: "#0a5561",
+    handlingDays: 0, returns: "torqline", returnDays: 30, warranty: "manufacturer", pickup: true, status: "active",
+  },
+  {
+    slug: "ridgeline-tool-supply", name: "Ridgeline Tool Supply", tagline: "Contractor supply since 1998",
+    about: "A family-run contractor supply house stocking power tools, sanders and PPE for remodelers.",
+    rating: 4.6, ratingCount: 2_310, since: "2024-05-14", location: "Denver, CO", color: "#7c2d12",
+    handlingDays: 1, returns: "seller", returnDays: 30, warranty: "manufacturer", status: "active",
+  },
+  {
+    slug: "harbor-fastener-co", name: "Harbor Fastener Co.", tagline: "Bits, blades and fixings in bulk",
+    about: "Fasteners and consumables by the box. Returns are handled through the Torqline returns centre.",
+    rating: 4.4, ratingCount: 874, since: "2025-01-09", location: "Tacoma, WA", color: "#334155",
+    handlingDays: 2, returns: "torqline", returnDays: 30, warranty: "manufacturer", status: "active",
+  },
+  {
+    slug: "prairie-outdoor-power", name: "Prairie Outdoor Power", tagline: "Authorised outdoor power dealer",
+    about: "Mowers, trimmers and blowers, set up and tested before they ship. Warranty claims go straight to Prairie's service shop.",
+    rating: 4.7, ratingCount: 1_562, since: "2024-09-02", location: "Omaha, NE", color: "#3f6212",
+    handlingDays: 2, returns: "seller", returnDays: 14, warranty: "seller", status: "active",
+  },
 ];
 
 export const brands: Brand[] = [
@@ -266,13 +353,242 @@ const seeds: Seed[] = [
     variants: [{ id: "std", name: "100 pcs", price: 49, compareAtPrice: 69 }],
     tags: ["hot"],
   },
+  {
+    slug: "voltra-18v-brushless-4-tool-combo-kit",
+    title: "Voltra 18V Brushless 4-Tool Combo Kit with 2 Batteries & Bag",
+    brand: "voltra",
+    category: "power-tools",
+    description:
+      "Hammer drill, impact driver, circular saw and LED light on one battery platform, with two 5.0Ah packs, a rapid charger and a wheeled contractor bag.",
+    specs: ["18V brushless", "4 tools + light", "2 × 5.0Ah batteries", "Rapid charger", "Wheeled bag"],
+    icon: "drill",
+    tint: "#f97316",
+    variants: [{ id: "kit", name: "Kit with 2 × 5.0Ah", price: 499, compareAtPrice: 699 }],
+    tags: ["hot", "featured"],
+  },
+  {
+    slug: "ironhide-18v-drill-impact-combo-kit",
+    title: "Ironhide 18V Drill Driver & Impact Driver Combo Kit",
+    brand: "ironhide",
+    category: "power-tools",
+    description: "The two tools every trade reaches for first, with two 2.0Ah packs, a charger and a soft bag.",
+    specs: ["18V", "Drill: 60 Nm", "Impact: 180 Nm", "2 × 2.0Ah batteries", "Soft bag"],
+    icon: "drill",
+    tint: "#eab308",
+    variants: [{ id: "kit", name: "Kit with 2 × 2.0Ah", price: 279, compareAtPrice: 379 }],
+    tags: ["hot"],
+  },
+  {
+    slug: "voltra-hd18-hammer-drill",
+    title: "Voltra HD18 Brushless Hammer Drill, 13 mm Metal Chuck",
+    brand: "voltra",
+    category: "power-tools",
+    description: "Drills masonry, steel and timber. A 3-mode selector and 90 Nm of torque handle anchors and augers.",
+    specs: ["18V brushless", "90 Nm max torque", "3 modes: drill / hammer / drive", "13 mm metal chuck"],
+    icon: "drill",
+    tint: "#ea580c",
+    variants: [
+      { id: "tool", name: "Tool only", price: 179 },
+      { id: "kit", name: "Kit with 2 × 4.0Ah", price: 259 },
+    ],
+    tags: ["new"],
+  },
+  {
+    slug: "brunn-os18-random-orbit-sander",
+    title: "Brunn OS18 Cordless 125 mm Random Orbit Sander",
+    brand: "brunn",
+    category: "power-tools",
+    description: "Variable speed, hook-and-loop pad and a dust canister that clicks onto any shop vac hose.",
+    specs: ["18V", "125 mm pad", "7,000–11,000 opm", "Hook-and-loop"],
+    icon: "ruler",
+    tint: "#0891b2",
+    variants: [{ id: "tool", name: "Tool only", price: 99, compareAtPrice: 139 }],
+    tags: ["clearance"],
+  },
+  {
+    slug: "kestrel-bl36-leaf-blower",
+    title: "Kestrel BL36 36V Brushless Leaf Blower",
+    brand: "kestrel",
+    category: "lawn-garden",
+    description: "Up to 190 km/h air speed with a turbo button, variable trigger and cruise lock.",
+    specs: ["2 × 18V (36V)", "Up to 190 km/h", "Turbo boost", "Cruise lock"],
+    icon: "fan",
+    tint: "#65a30d",
+    variants: [
+      { id: "tool", name: "Tool only", price: 189 },
+      { id: "kit", name: "Kit with 2 × 4.0Ah", price: 299, compareAtPrice: 349 },
+    ],
+    tags: ["new"],
+  },
+  {
+    slug: "axelwood-8m-tape-measure",
+    title: "Axelwood 8 m / 26 ft Magnetic Tape Measure",
+    brand: "axelwood",
+    category: "hand-tools",
+    description: "Nylon-coated blade with 3.5 m standout, twin magnetic hook and a rubber over-mould.",
+    specs: ["8 m / 26 ft", "3.5 m standout", "Magnetic hook", "Metric + imperial"],
+    icon: "ruler",
+    tint: "#1e3a8a",
+    variants: [{ id: "std", name: "8 m", price: 19, compareAtPrice: 29 }],
+    tags: ["clearance"],
+  },
+  {
+    slug: "axelwood-stackable-case-system",
+    title: "Axelwood Stackable Case System, 3-Piece",
+    brand: "axelwood",
+    category: "storage",
+    description: "A rolling base, a deep case and an organiser that lock together and ride as one unit.",
+    specs: ["3 pieces", "IP65 seals", "Metal latches", "Load: 100 kg stacked"],
+    icon: "box",
+    tint: "#1e40af",
+    variants: [{ id: "std", name: "3-piece", price: 129, compareAtPrice: 169 }],
+    tags: ["featured"],
+  },
+  {
+    slug: "voltra-2ah-compact-battery",
+    title: "Voltra 18V 2.0Ah Compact Battery",
+    brand: "voltra",
+    category: "power-supplies",
+    description: "A light pack for drills and drivers that keeps overhead work comfortable.",
+    specs: ["18V 2.0Ah", "Fuel gauge", "0.4 kg"],
+    icon: "battery",
+    tint: "#f97316",
+    variants: [{ id: "std", name: "Single", price: 59 }],
+    tags: [],
+  },
+  {
+    slug: "ironhide-12v-led-task-light",
+    title: "Ironhide 12V LED Task Light with Magnetic Base",
+    brand: "ironhide",
+    category: "site-lighting",
+    description: "A 600-lumen light that clamps, hangs or sticks to steel, with a 180° pivoting head.",
+    specs: ["12V", "600 lumens", "Magnetic base + hook", "180° pivot"],
+    icon: "lamp",
+    tint: "#ca8a04",
+    variants: [{ id: "tool", name: "Tool only", price: 45, compareAtPrice: 59 }],
+    tags: ["clearance"],
+  },
+  {
+    slug: "norrmark-eye-ear-protection-kit",
+    title: "Norrmark Safety Glasses & Ear Defender Kit",
+    brand: "norrmark",
+    category: "safety",
+    description: "Anti-fog wraparound glasses and SNR 30 dB folding ear defenders in one pack.",
+    specs: ["Anti-fog, anti-scratch", "SNR 30 dB", "Folding headband"],
+    icon: "hardhat",
+    tint: "#166534",
+    variants: [{ id: "std", name: "Kit", price: 34 }],
+    tags: [],
+  },
+  {
+    slug: "kestrel-metal-cutting-blade-pack",
+    title: "Kestrel 165 mm Blade 3-Pack: Framing, Finish & Metal",
+    brand: "kestrel",
+    category: "accessories",
+    description: "Thin-kerf blades that fit the CS165 and most 165 mm cordless saws.",
+    specs: ["165 mm, 20 mm bore", "24T / 48T / 56T", "Thin kerf"],
+    icon: "saw",
+    tint: "#b91c1c",
+    variants: [{ id: "std", name: "3-pack", price: 39, compareAtPrice: 49 }],
+    tags: [],
+  },
+  {
+    slug: "norrmark-structural-screws-500",
+    title: "Norrmark Structural Timber Screws, Box of 500",
+    brand: "norrmark",
+    category: "accessories",
+    description: "Coated, self-drilling screws with a cutting tip, rated for decks, pergolas and framing.",
+    specs: ["6 × 80 mm", "Torx T30 drive", "Coated for outdoor use", "500 per box"],
+    icon: "nut",
+    tint: "#166534",
+    variants: [{ id: "std", name: "Box of 500", price: 39 }],
+    tags: [],
+  },
 ];
+
+/**
+ * Marketplace and filter fields layered onto the seeds above. Kept separate so the base product copy
+ * stays easy to read. Anything missing here defaults to: sold by Torqline, no voltage.
+ */
+const extras: Record<string, Partial<Product>> = {
+  "voltra-vx12-compact-drill-driver": {
+    subcategory: "drills-drivers", voltage: "12V",
+    boughtTogether: ["axelwood-100pc-bit-set", "axelwood-stackable-case-system"],
+    qa: [
+      { q: "Does the kit come with a charger?", a: "Yes, the kit includes a 1-hour charger and two 2.0Ah packs.", by: "seller", date: "2026-09-10" },
+      { q: "Will 18V Voltra batteries fit this?", a: "No. The VX12 is on the 12V platform, so it only takes Voltra 12V packs.", by: "seller", date: "2026-09-04" },
+    ],
+  },
+  "kestrel-cs165-brushless-circular-saw": {
+    subcategory: "saws", voltage: "18V",
+    boughtTogether: ["kestrel-metal-cutting-blade-pack", "voltra-5ah-battery-twin"],
+    specTable: [
+      { label: "Motor", value: "18V brushless" },
+      { label: "Blade diameter", value: "165 mm (20 mm bore)" },
+      { label: "Max cut depth at 90°", value: "57 mm" },
+      { label: "Max cut depth at 45°", value: "41 mm" },
+      { label: "Bevel range", value: "0–50°" },
+      { label: "No-load speed", value: "5,000 rpm" },
+      { label: "Shoe", value: "Magnesium" },
+      { label: "Brake", value: "Electric" },
+      { label: "Weight (bare)", value: "2.6 kg" },
+      { label: "In the box", value: "Saw, 24T blade, rip guide, hex key (kit adds 5.0Ah battery and charger)" },
+    ],
+    qa: [
+      { q: "Can it cut 2x lumber at a 45° bevel?", a: "Yes. Depth at 45° is 41 mm, which clears 1.5\" (38 mm) stock.", by: "seller", date: "2026-09-02" },
+      { q: "Is the dust port a standard size?", a: "It's 35 mm and fits most shop-vac hoses with the included adapter.", by: "customer", date: "2026-08-21" },
+    ],
+  },
+  "brunn-bn18-brad-nailer": { subcategory: "nailers", voltage: "Corded" },
+  "axelwood-rc7-rolling-tool-cabinet": { subcategory: "tool-chests", voltage: "Manual", boughtTogether: ["ironhide-72t-ratchet-socket-set"] },
+  "ironhide-pl82-corded-planer": { subcategory: "planers-sanders", voltage: "Corded", seller: "ridgeline-tool-supply" },
+  "brunn-fn16-angled-finish-nailer": { subcategory: "nailers", voltage: "18V" },
+  "voltra-js18-brushless-jigsaw": { subcategory: "saws", voltage: "18V", boughtTogether: ["voltra-5ah-battery-twin", "brunn-dual-port-rapid-charger"] },
+  "kestrel-lm46-cordless-mower": {
+    subcategory: "mowers", voltage: "36V", seller: "prairie-outdoor-power",
+    boughtTogether: ["norrmark-gt40-grass-trimmer", "kestrel-bl36-leaf-blower"],
+    qa: [{ q: "Does it mulch?", a: "Yes, a mulching plug is in the box.", by: "seller", date: "2026-08-30" }],
+  },
+  "norrmark-gt40-grass-trimmer": { subcategory: "trimmers", voltage: "18V", seller: "prairie-outdoor-power" },
+  "axelwood-claw-hammer-20oz": { subcategory: "hammers", voltage: "Manual", boughtTogether: ["axelwood-8m-tape-measure"] },
+  "ironhide-72t-ratchet-socket-set": { subcategory: "sockets-wrenches", voltage: "Manual", seller: "ridgeline-tool-supply" },
+  "voltra-5ah-battery-twin": { subcategory: "batteries", voltage: "18V", boughtTogether: ["brunn-dual-port-rapid-charger"] },
+  "brunn-dual-port-rapid-charger": { subcategory: "chargers", voltage: "18V" },
+  "norrmark-ag115-angle-grinder": { subcategory: "grinders", voltage: "18V", boughtTogether: ["norrmark-eye-ear-protection-kit"] },
+  "voltra-mig160-inverter-welder": { subcategory: "welders", voltage: "Corded", boughtTogether: ["norrmark-eye-ear-protection-kit"] },
+  "ironhide-vented-safety-helmet": { subcategory: "head-protection", voltage: "Manual", seller: "ridgeline-tool-supply" },
+  "brunn-4000lm-site-light": { subcategory: "area-lights", voltage: "18V" },
+  "axelwood-100pc-bit-set": { subcategory: "bits-blades", voltage: "Manual", seller: "harbor-fastener-co" },
+  "voltra-18v-brushless-4-tool-combo-kit": {
+    subcategory: "combo-kits", voltage: "18V",
+    boughtTogether: ["voltra-5ah-battery-twin", "axelwood-100pc-bit-set"],
+    qa: [{ q: "Are the batteries 5.0Ah or 4.0Ah?", a: "Two 5.0Ah packs.", by: "seller", date: "2026-09-15" }],
+  },
+  "ironhide-18v-drill-impact-combo-kit": { subcategory: "combo-kits", voltage: "18V", boughtTogether: ["axelwood-100pc-bit-set"] },
+  "voltra-hd18-hammer-drill": { subcategory: "drills-drivers", voltage: "18V", boughtTogether: ["voltra-5ah-battery-twin", "norrmark-structural-screws-500"] },
+  "brunn-os18-random-orbit-sander": { subcategory: "planers-sanders", voltage: "18V", seller: "ridgeline-tool-supply" },
+  "kestrel-bl36-leaf-blower": { subcategory: "blowers", voltage: "36V", seller: "prairie-outdoor-power" },
+  "axelwood-8m-tape-measure": { subcategory: "measuring", voltage: "Manual", seller: "harbor-fastener-co" },
+  "axelwood-stackable-case-system": { subcategory: "cases-organisers", voltage: "Manual" },
+  "voltra-2ah-compact-battery": { subcategory: "batteries", voltage: "18V" },
+  "ironhide-12v-led-task-light": { subcategory: "task-lights", voltage: "12V", seller: "harbor-fastener-co" },
+  "norrmark-eye-ear-protection-kit": { subcategory: "eye-hearing", voltage: "Manual", seller: "ridgeline-tool-supply" },
+  "kestrel-metal-cutting-blade-pack": { subcategory: "bits-blades", voltage: "Manual", seller: "harbor-fastener-co" },
+  "norrmark-structural-screws-500": { subcategory: "fasteners", voltage: "Manual", seller: "harbor-fastener-co" },
+};
+
+/** "Kit with 2 × 5.0Ah" → a battery ships with it. */
+const kitHasBattery = (variantName: string) => /\d(\.\d)?\s*Ah/i.test(variantName);
 
 export const products: Product[] = seeds.map((s, i) => ({
   rating: 4 + ((i * 7) % 10) / 10,
   reviewCount: 8 + ((i * 13) % 60),
   stock: 5 + ((i * 11) % 40),
   ...s,
+  ...extras[s.slug],
+  variants: s.category === "power-supplies"
+    ? s.variants
+    : s.variants.map((v) => ({ ...v, batteryIncluded: v.batteryIncluded ?? kitHasBattery(v.name) })),
   id: s.slug,
   createdAt: Date.UTC(2026, 8, 1) - i * 86_400_000,
 }));

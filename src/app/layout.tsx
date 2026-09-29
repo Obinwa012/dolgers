@@ -7,7 +7,7 @@ import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import { AuthProvider } from "@/context/AuthProvider";
 import { ShopProvider } from "@/context/ShopProvider";
-import { getCategories, getProducts } from "@/lib/catalog";
+import { getCategories, getProducts, getSellers } from "@/lib/catalog";
 import "./globals.css";
 
 const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
@@ -21,12 +21,12 @@ export const metadata: Metadata = {
 export const revalidate = 300;
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const [products, categories] = await Promise.all([getProducts(), getCategories()]);
+  const [products, categories, sellers] = await Promise.all([getProducts(), getCategories(), getSellers()]);
   return (
     <html lang="en" className={`${inter.variable} ${oswald.variable} antialiased`}>
       <body className="flex min-h-screen flex-col font-sans">
         <AuthProvider>
-          <ShopProvider products={products}>
+          <ShopProvider products={products} sellers={sellers}>
             <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-white focus:p-3">
               Skip to content
             </a>

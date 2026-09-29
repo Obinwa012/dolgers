@@ -24,6 +24,45 @@ service cloud.firestore {
       allow update, delete: if isAdmin(); // e.g. a future admin dashboard marking orders shipped
     }
 
+    // --- Marketplace ---------------------------------------------------------------------------
+    // Everything below is written only by the server (/api/seller, /api/returns, /api/admin and the
+    // Stripe webhook, via the Admin SDK), which checks ownership and validates input.
+
+    // Public seller profiles (storefront pages, "Sold by" labels).
+    match /sellers/{slug} { allow read: if true; allow write: if isAdmin(); }
+    // Private seller data: owner uid, Stripe account, commission. No client access.
+    match /sellerAccounts/{slug} { allow read, write: if false; }
+    // An applicant can see their own application's status; submitting goes through /api/seller.
+    match /sellerApplications/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+    // One seller's part of an order: the customer can read it (tracking, returns). Sellers read
+    // theirs through /api/seller.
+    match /sellerOrders/{id} {
+      allow read: if signedIn() && resource.data.uid == request.auth.uid;
+      allow write: if false;
+    }
+    match /returns/{id} {
+      allow read: if signedIn() && resource.data.uid == request.auth.uid;
+      allow write: if false;
+    }
+    // Product questions: signed-in shoppers can create; nobody reads them client-side (answers are
+    // copied onto the product by the seller's dashboard).
+    match /questions/{id} {
+      allow create: if signedIn()
+                    && request.resource.data.keys().hasOnly(['productId', 'seller', 'question', 'name', 'uid', 'status', 'createdAt'])
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.status == 'open'
+                    && request.resource.data.createdAt == request.time
+                    && request.resource.data.productId is string && request.resource.data.productId.size() <= 200
+                    && request.resource.data.seller is string && request.resource.data.seller.size() <= 100
+                    && request.resource.data.name is string && request.resource.data.name.size() <= 40
+                    && request.resource.data.question is string
+                    && request.resource.data.question.size() >= 10 && request.resource.data.question.size() <= 500;
+      allow read, update, delete: if isAdmin();
+    }
+
     // Newsletter: write-only from the client, with basic validation.
     match /subscribers/{email} {
       allow create: if request.resource.data.keys().hasOnly(['email', 'createdAt'])

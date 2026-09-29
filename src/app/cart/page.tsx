@@ -6,10 +6,11 @@ import { Qty } from "@/components/CartDrawer";
 import ToolArt from "@/components/ToolArt";
 import { useShop } from "@/context/ShopProvider";
 import { money } from "@/lib/catalog";
-import { FREE_SHIPPING } from "@/lib/pricing";
+import { BUNDLES, FREE_SHIPPING_CENTS, quote, toCents } from "@/lib/pricing";
 
 export default function CartPage() {
-  const { lines, subtotal, setQty } = useShop();
+  const { lines, subtotal, setQty, sellerOf } = useShop();
+  const q = quote(lines.map((l) => ({ unitCents: toCents(l.price), qty: l.qty, productId: l.productId, variantId: l.variantId })));
 
   return (
     <div className="container-x py-10">
@@ -30,6 +31,7 @@ export default function CartPage() {
                 <div className="flex flex-1 flex-col gap-1">
                   <Link href={`/products/${l.product.slug}`} className="font-display text-lg hover:text-brand-600">{l.product.title}</Link>
                   <p className="text-sm text-muted">{l.variantName} · {money(l.price)}</p>
+                  <p className="text-xs text-muted">Sold by {sellerOf(l.product)?.name ?? "Torqline"}</p>
                   <div className="mt-auto flex items-center justify-between">
                     <Qty value={l.qty} onChange={(q) => setQty(l.productId, l.variantId, q)} />
                     <span className="font-semibold">{money(l.price * l.qty)}</span>
@@ -44,8 +46,14 @@ export default function CartPage() {
           <aside className="h-fit space-y-4 rounded-lg bg-surface p-6">
             <h2 className="font-display text-xl uppercase">Order summary</h2>
             <div className="flex justify-between"><span>Subtotal</span><span>{money(subtotal)}</span></div>
+            {q.bundles.map((b) => (
+              <div key={b.id} className="flex justify-between text-sm text-emerald-700">
+                <span>{BUNDLES.find((x) => x.id === b.id)?.title ?? "Bundle"}{b.sets > 1 ? ` × ${b.sets}` : ""}</span>
+                <span>-{money(b.cents / 100)}</span>
+              </div>
+            ))}
             <div className="flex justify-between text-sm text-muted">
-              <span>Shipping</span><span>{subtotal >= FREE_SHIPPING ? "Free" : "Calculated at checkout"}</span>
+              <span>Shipping</span><span>{q.subtotalCents - q.bundleCents >= FREE_SHIPPING_CENTS ? "Free" : "Calculated at checkout"}</span>
             </div>
             <Link href="/checkout" className="btn btn-brand w-full">Proceed to checkout</Link>
             <Link href="/collections/all" className="block text-center text-sm underline">Continue shopping</Link>
