@@ -99,7 +99,7 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
       </button>
 
       <p className="mt-8 text-center text-sm">
-        {isLogin ? "New to Torqline? " : "Already have an account? "}
+        {isLogin ? "New to Dolgers? " : "Already have an account? "}
         <Link href={`/${isLogin ? "register" : "login"}?next=${encodeURIComponent(next)}`} className="font-semibold text-brand-700 underline">
           {isLogin ? "Create an account" : "Log in"}
         </Link>
@@ -116,7 +116,7 @@ function safeNext(raw: string | null): string {
   const fallback = "/account";
   if (!raw || !raw.startsWith("/")) return fallback;
   try {
-    const base = "https://torqline.invalid";
+    const base = "https://dolgers.invalid";
     const url = new URL(raw, base);
     if (url.origin !== base) return fallback;
     return `${url.pathname}${url.search}${url.hash}`;

@@ -7,7 +7,7 @@ import type { ReturnRequest, Seller, SellerOrder } from "@/lib/types";
 /**
  * POST /api/returns  (customer)
  *   { action: "request", sellerOrderId, productId, variantId, qty, reason, details }
- *   { action: "escalate", returnId }   → hands the case to Torqline
+ *   { action: "escalate", returnId }   → hands the case to Dolgers
  * Customers read their own returns directly from Firestore (see firestore.rules).
  */
 export async function POST(request: Request) {

@@ -9,8 +9,8 @@ import { SELF_SELLER } from "@/lib/marketplace";
 import type { CartItem, Product, Seller } from "@/lib/types";
 import { useAuth } from "./AuthProvider";
 
-const LS_CART = "torqline:cart";
-const LS_WISH = "torqline:wishlist";
+const LS_CART = "dolgers:cart";
+const LS_WISH = "dolgers:wishlist";
 
 export interface CartLine extends CartItem {
   product: Product;

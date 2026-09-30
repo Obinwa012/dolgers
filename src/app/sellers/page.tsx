@@ -14,10 +14,10 @@ export default async function SellersPage() {
 
   return (
     <div className="container-x py-10">
-      <h1 className="section-title">Torqline Marketplace</h1>
+      <h1 className="section-title">Dolgers Marketplace</h1>
       <p className="mx-auto mt-3 max-w-2xl text-center text-muted">
-        Torqline stock plus vetted specialist sellers. Every seller is identity- and business-verified before they can list,
-        and every order is paid through Torqline.
+        Dolgers stock plus vetted specialist sellers. Every seller is identity- and business-verified before they can list,
+        and every order is paid through Dolgers.
       </p>
       <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {ordered.map((s) => (
@@ -35,7 +35,7 @@ export default async function SellersPage() {
         ))}
       </div>
       <div className="mt-12 rounded-xl bg-brand-700 p-8 text-center text-white">
-        <h2 className="font-display text-3xl uppercase">Sell on Torqline</h2>
+        <h2 className="font-display text-3xl uppercase">Sell on Dolgers</h2>
         <p className="mx-auto mt-2 max-w-xl text-white/80">List your stock in front of trades and serious DIYers. We handle checkout and pay you out automatically.</p>
         <Link href="/sell" className="btn btn-light mt-5">Learn more</Link>
       </div>

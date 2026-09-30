@@ -21,7 +21,7 @@ export const revalidate = 300;
 
 const perks = [
   { icon: Truck, title: "Free Shipping Over $99", text: "Dispatched same day before 2pm." },
-  { icon: ShieldCheck, title: "3-Year Tool Warranty", text: "On power tools sold by Torqline." },
+  { icon: ShieldCheck, title: "3-Year Tool Warranty", text: "On power tools sold by Dolgers." },
   { icon: Zap, title: "Trade Pricing", text: "Open a free trade account." },
   { icon: BadgePercent, title: "5% Off First Order", text: "Use code FIRSTBUILD at checkout." },
 ];
@@ -33,13 +33,13 @@ const promos: Promo[] = [
   { title: "Dual-battery mowers", text: "Self-propelled cutting from the pro garden range.", brand: "norrmark", icon: "sprout", bg: "#0f3b33", tint: "#22c55e", href: "/collections/lawn-garden" },
   { title: "Bonus battery bundle", text: "Add a free 2.0Ah pack when you buy any combo kit.", brand: "voltra", icon: "battery", bg: "#0e3a5c", tint: "#f97316", href: "/collections/power-supplies" },
   { title: "Combo kit with soft bag", text: "Drill, impact driver and 2 batteries, ready for site.", brand: "ironhide", icon: "drill", bg: "#1f2027", tint: "#facc15", href: "/collections/power-tools" },
-  { title: "Compact drill drivers", text: "Palm-sized power for cabinets and fit-outs.", brand: "voltra", icon: "drill", bg: "#0b2e46", tint: "#06b6d4", href: "/products/voltra-vx12-compact-drill-driver" },
-  { title: "Brushless grinders", text: "Kickback protection as standard on 18V models.", brand: "norrmark", icon: "flame", bg: "#0e2f22", tint: "#10b981", href: "/collections/welding" },
+  { title: "Compact drill drivers", text: "Palm-sized power for cabinets and fit-outs.", brand: "voltra", icon: "drill", bg: "#1b1b1d", tint: "#e08a00", href: "/products/voltra-vx12-compact-drill-driver" },
+  { title: "Brushless grinders", text: "Kickback protection as standard on 18V models.", brand: "norrmark", icon: "flame", bg: "#241a08", tint: "#e08a00", href: "/collections/welding" },
 ];
 
 const deals = [
-  { big: "Save $40", text: "on selected brushless jigsaws for wood and metal.", bg: "from-sky-700 to-sky-500", icon: "saw" as IconKey, href: "/products/voltra-js18-brushless-jigsaw" },
-  { big: "Free bit set", text: "with any drill driver kit, while stocks last.", bg: "from-cyan-700 to-teal-500", icon: "nut" as IconKey, href: "/collections/accessories" },
+  { big: "Save $40", text: "on selected brushless jigsaws for wood and metal.", bg: "from-[#1b1b1d] to-[#4a3a10]", icon: "saw" as IconKey, href: "/products/voltra-js18-brushless-jigsaw" },
+  { big: "Free bit set", text: "with any drill driver kit, while stocks last.", bg: "from-[#141416] to-[#4a4a52]", icon: "nut" as IconKey, href: "/collections/accessories" },
   { big: "Free storage", text: "stackable case with selected nailers.", bg: "from-red-800 to-red-500", icon: "box" as IconKey, href: "/collections/storage" },
   { big: "Up to 20% off", text: "hand tool sets from our workshop brands.", bg: "from-orange-700 to-amber-500", icon: "wrench" as IconKey, href: "/collections/hand-tools" },
 ];
@@ -264,7 +264,7 @@ export default async function Home() {
 
       {/* Two banners */}
       <section className="container-x grid gap-4 py-12 md:grid-cols-2">
-        <Banner title="High-output batteries" text="Longer runtime and more torque from the latest cell tech." href="/collections/power-supplies" bg="from-cyan-800 to-cyan-500" icon="battery" brand={brandOf("brunn")} />
+        <Banner title="High-output batteries" text="Longer runtime and more torque from the latest cell tech." href="/collections/power-supplies" bg="from-[#1b1b1d] to-[#4a3a10]" icon="battery" brand={brandOf("brunn")} />
         <Banner title="Welding & metalwork" text="Grinders, welders and PPE for clean, safe fabrication." href="/collections/welding" bg="from-orange-900 to-orange-600" icon="flame" brand={brandOf("voltra")} />
       </section>
 
@@ -274,7 +274,7 @@ export default async function Home() {
           <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
             <div>
               <h2 className="font-display text-2xl uppercase md:text-3xl">Shop the marketplace</h2>
-              <p className="text-sm text-muted">Specialist sellers, vetted by Torqline. Returns are backed by us if a seller doesn&apos;t sort it out.</p>
+              <p className="text-sm text-muted">Specialist sellers, vetted by Dolgers. Returns are backed by us if a seller doesn&apos;t sort it out.</p>
             </div>
             <Link href="/sellers" className="text-sm font-semibold text-brand-700 hover:underline">All sellers</Link>
           </div>
@@ -293,7 +293,7 @@ export default async function Home() {
             ))}
           </div>
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-brand-50 p-5">
-            <p><b className="font-display uppercase">Sell on Torqline.</b> <span className="text-muted">Reach trades and serious DIYers with payouts handled for you.</span></p>
+            <p><b className="font-display uppercase">Sell on Dolgers.</b> <span className="text-muted">Reach trades and serious DIYers with payouts handled for you.</span></p>
             <Link href="/sell" className="btn btn-brand">Become a seller</Link>
           </div>
         </section>
@@ -375,7 +375,7 @@ function heroSlides(products: Product[], sellerCount: number): HeroSlide[] {
       id: "special-buy", eyebrow: "Special buy of the day", title: "4 tools. 2 batteries. One price.",
       text: special.title, callout: money(v.price), calloutNote: `was ${money(v.compareAtPrice!)} · save ${money(v.compareAtPrice! - v.price)}`,
       cta: "Grab the deal", href: `/products/${special.slug}`, icon: "drill",
-      bg: "radial-gradient(circle at 75% 50%, #b4530955, transparent 55%), linear-gradient(120deg, #111418 30%, #3b1d0a)", accent: "#f5b400",
+      bg: "radial-gradient(circle at 75% 50%, #e08a0044, transparent 55%), linear-gradient(120deg, #1b1b1d 30%, #3a2a08)", accent: "#e08a00",
     });
   }
   const combos = products.filter((p) => p.subcategory === "combo-kits");
@@ -385,7 +385,7 @@ function heroSlides(products: Product[], sellerCount: number): HeroSlide[] {
       id: "combo-kits", eyebrow: "Combo kit event", title: `Save up to ${money(comboSave).replace(/\.00$/, "")} on combo kits`,
       text: "Drill, driver and saw bundles with batteries and chargers included. Start a platform for less.",
       cta: "Shop combo kits", href: "/collections/power-tools?sub=combo-kits", icon: "box",
-      bg: "radial-gradient(circle at 75% 50%, #13808f66, transparent 55%), linear-gradient(120deg, #062f36 30%, #0a5561)", accent: "#f5b400",
+      bg: "radial-gradient(circle at 75% 50%, #e08a0033, transparent 55%), linear-gradient(120deg, #1b1b1d 30%, #2e2e34)", accent: "#e08a00",
     });
   const clear = products.filter((p) => p.tags.includes("clearance"));
   const clearPct = Math.max(0, ...clear.map(maxPercentOff));
@@ -398,10 +398,10 @@ function heroSlides(products: Product[], sellerCount: number): HeroSlide[] {
     });
   if (sellerCount > 0)
     slides.push({
-      id: "marketplace", eyebrow: "New: Torqline Marketplace", title: "More sellers. More stock.",
-      text: `Shop ${sellerCount} specialist sellers alongside Torqline, with ratings on every listing and returns backed by us.`,
+      id: "marketplace", eyebrow: "New: Dolgers Marketplace", title: "More sellers. More stock.",
+      text: `Shop ${sellerCount} specialist sellers alongside Dolgers, with ratings on every listing and returns backed by us.`,
       cta: "Meet the sellers", href: "/sellers", icon: "sprout",
-      bg: "radial-gradient(circle at 75% 50%, #4d7c0f66, transparent 55%), linear-gradient(120deg, #0f1f0a 30%, #1f3a0f)", accent: "#a3e635",
+      bg: "radial-gradient(circle at 75% 50%, #f5b30133, transparent 55%), linear-gradient(120deg, #1b1b1d 30%, #4a3a10)", accent: "#f5b301",
     });
   return slides;
 }

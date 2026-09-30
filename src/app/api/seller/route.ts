@@ -249,7 +249,7 @@ async function decideReturn(request: Request, body: Record<string, unknown>) {
   const decision = body.decision === "approve" ? "approve" : body.decision === "reject" ? "reject" : null;
   const note = typeof body.note === "string" ? body.note.trim().slice(0, 500) : "";
   if (!decision) throw new MarketplaceError("Choose approve or reject.");
-  if (decision === "reject" && note.length < 5) throw new MarketplaceError("Tell the customer why (it's shown to them and to Torqline if they escalate).");
+  if (decision === "reject" && note.length < 5) throw new MarketplaceError("Tell the customer why (it's shown to them and to Dolgers if they escalate).");
   const ref = adminDb().collection("returns").doc(id || "-");
   const status = await adminDb().runTransaction(async (tx) => {
     const r = (await tx.get(ref)).data() as ReturnRequest | undefined;

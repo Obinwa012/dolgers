@@ -66,7 +66,7 @@ export default function Header({ categories }: { categories: Category[] }) {
       <button
         type="submit"
         aria-label="Search"
-        className="grid h-10 w-12 place-items-center rounded-r-md bg-brand-500 text-white hover:bg-brand-600"
+        className="grid h-10 w-12 place-items-center rounded-r-md bg-accent text-white hover:bg-[#c97a00]"
       >
         <Search className="h-4 w-4" />
       </button>

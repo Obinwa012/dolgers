@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Oswald } from "next/font/google";
+import { Heebo } from "next/font/google";
 import AnnouncementBar from "@/components/AnnouncementBar";
 import BackToTop from "@/components/BackToTop";
 import CartDrawer from "@/components/CartDrawer";
@@ -10,11 +10,10 @@ import { ShopProvider } from "@/context/ShopProvider";
 import { getCategories, getProducts, getSellers } from "@/lib/catalog";
 import "./globals.css";
 
-const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
-const oswald = Oswald({ variable: "--font-oswald", subsets: ["latin"] });
+const heebo = Heebo({ variable: "--font-heebo", subsets: ["latin"], weight: ["400", "500", "600", "700", "800", "900"] });
 
 export const metadata: Metadata = {
-  title: { default: "Torqline | Pro Tools & Workshop Supply", template: "%s | Torqline" },
+  title: { default: "Dolgers | Pro Tools & Workshop Supply", template: "%s | Dolgers" },
   description: "Power tools, hand tools, storage and site gear for trades and serious DIYers.",
 };
 
@@ -23,7 +22,7 @@ export const revalidate = 300;
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const [products, categories, sellers] = await Promise.all([getProducts(), getCategories(), getSellers()]);
   return (
-    <html lang="en" className={`${inter.variable} ${oswald.variable} antialiased`}>
+    <html lang="en" className={`${heebo.variable} antialiased`}>
       <body className="flex min-h-screen flex-col font-sans">
         <AuthProvider>
           <ShopProvider products={products} sellers={sellers}>

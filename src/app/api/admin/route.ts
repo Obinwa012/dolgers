@@ -5,7 +5,7 @@ import { errorResponse, refundReturn, requireAdmin } from "@/lib/server/marketpl
 import type { Order, ReturnRequest, Seller, SellerAccount, SellerApplication } from "@/lib/types";
 
 /**
- * Torqline staff (custom claim `admin: true`).
+ * Dolgers staff (custom claim `admin: true`).
  * GET  → pending seller applications, escalated returns, orders flagged for review.
  * POST → { action: "approve", uid, commissionRate? } | { action: "reject", uid, note }
  *        | { action: "resolveReturn", returnId, decision: "refund" | "deny", note }

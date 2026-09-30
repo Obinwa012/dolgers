@@ -23,7 +23,7 @@ export const toCents = (dollars: number) => Math.round(dollars * 100);
 
 /**
  * Bundle offers: buy every item in the set together and get `percentOff` those items.
- * Torqline-sold items only, so the platform funds the discount and seller payouts are unaffected.
+ * Dolgers-sold items only, so the platform funds the discount and seller payouts are unaffected.
  */
 export interface Bundle {
   id: string;

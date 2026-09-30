@@ -47,7 +47,7 @@ export default async function SellerPage(props: PageProps<"/sellers/[slug]">) {
             <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-white/85 [&_.text-muted]:text-white/80">
               <Stars rating={seller.rating} count={seller.ratingCount} size="md" />
               <span className="flex items-center gap-1"><MapPin className="h-4 w-4" /> {seller.location}</span>
-              <span className="flex items-center gap-1"><CalendarDays className="h-4 w-4" /> On Torqline since {new Date(seller.since).getUTCFullYear()}</span>
+              <span className="flex items-center gap-1"><CalendarDays className="h-4 w-4" /> On Dolgers since {new Date(seller.since).getUTCFullYear()}</span>
             </div>
           </div>
         </div>

@@ -4,8 +4,8 @@ import type {
   ApplicationStatus, Category, Order, ReturnStatus, SellerApplication, SellerOrder, Variant, Voltage,
 } from "./types.ts";
 
-/** Torqline's own seller slug (first-party stock). */
-export const SELF_SELLER = "torqline";
+/** Dolgers's own seller slug (first-party stock). */
+export const SELF_SELLER = "dolgers";
 /** Default platform commission on third-party sales. A seller doc can override it. */
 export const COMMISSION_RATE = 0.12;
 /** Extra days on top of a seller's return window to allow for delivery. */
@@ -38,9 +38,9 @@ export interface SellerSplit {
 }
 
 /**
- * Split an order's items by seller. Discount codes and shipping are Torqline's (the platform funds
+ * Split an order's items by seller. Discount codes and shipping are Dolgers's (the platform funds
  * the discount and keeps shipping), so sellers are paid on their list prices minus commission.
- * First-party lines carry no commission: the whole amount is already Torqline's.
+ * First-party lines carry no commission: the whole amount is already Dolgers's.
  */
 export function splitOrder(items: Line[], rates: Record<string, number | undefined> = {}): SellerSplit[] {
   const by = new Map<string, Line[]>();

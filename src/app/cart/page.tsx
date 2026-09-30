@@ -31,7 +31,7 @@ export default function CartPage() {
                 <div className="flex flex-1 flex-col gap-1">
                   <Link href={`/products/${l.product.slug}`} className="font-display text-lg hover:text-brand-600">{l.product.title}</Link>
                   <p className="text-sm text-muted">{l.variantName} · {money(l.price)}</p>
-                  <p className="text-xs text-muted">Sold by {sellerOf(l.product)?.name ?? "Torqline"}</p>
+                  <p className="text-xs text-muted">Sold by {sellerOf(l.product)?.name ?? "Dolgers"}</p>
                   <div className="mt-auto flex items-center justify-between">
                     <Qty value={l.qty} onChange={(q) => setQty(l.productId, l.variantId, q)} />
                     <span className="font-semibold">{money(l.price * l.qty)}</span>

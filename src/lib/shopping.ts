@@ -2,7 +2,7 @@
 // Import-free (apart from types) so it can be unit-tested with plain `node`.
 import type { Product, Seller, SpecRow, Voltage } from "./types.ts";
 
-const SELF = "torqline"; // mirrors SELF_SELLER in marketplace.ts (kept import-free)
+const SELF = "dolgers"; // mirrors SELF_SELLER in marketplace.ts (kept import-free)
 const sellerSlug = (p: Product) => p.seller || SELF;
 const lowest = (p: Product) => Math.min(...p.variants.map((v) => v.price));
 
@@ -20,7 +20,7 @@ export interface Filters {
   voltage: Voltage[];
   battery: boolean;
   inStock: boolean;
-  /** "torqline", "marketplace", or one seller's slug. */
+  /** "dolgers", "marketplace", or one seller's slug. */
   seller: string;
   min: number | null;
   max: number | null;
@@ -63,9 +63,9 @@ export function filterProducts(list: Product[], f: Filters): Product[] {
     if (f.voltage.length && !(p.voltage && f.voltage.includes(p.voltage))) return false;
     if (f.battery && !p.variants.some((v) => v.batteryIncluded)) return false;
     if (f.inStock && p.stock <= 0) return false;
-    if (f.seller === "torqline" && sellerSlug(p) !== SELF) return false;
+    if (f.seller === "dolgers" && sellerSlug(p) !== SELF) return false;
     else if (f.seller === "marketplace" && sellerSlug(p) === SELF) return false;
-    else if (f.seller && f.seller !== "torqline" && f.seller !== "marketplace" && sellerSlug(p) !== f.seller) return false;
+    else if (f.seller && f.seller !== "dolgers" && f.seller !== "marketplace" && sellerSlug(p) !== f.seller) return false;
     // A product matches a price range if any of its options does.
     if (f.min !== null || f.max !== null) {
       const ok = p.variants.some((v) => (f.min === null || v.price >= f.min) && (f.max === null || v.price <= f.max));
@@ -190,9 +190,9 @@ export function policyLines(s: Pick<Seller, "name" | "slug" | "returns" | "retur
   const self = s.slug === SELF;
   return {
     returns:
-      s.returns === "torqline"
-        ? `${s.returnDays}-day returns handled by Torqline${self ? "" : ` on behalf of ${s.name}`}.`
-        : `${s.returnDays}-day returns handled by ${s.name}. Torqline steps in if a return isn't resolved.`,
+      s.returns === "dolgers"
+        ? `${s.returnDays}-day returns handled by Dolgers${self ? "" : ` on behalf of ${s.name}`}.`
+        : `${s.returnDays}-day returns handled by ${s.name}. Dolgers steps in if a return isn't resolved.`,
     warranty:
       s.warranty === "manufacturer"
         ? "Warranty claims go to the manufacturer; we'll help you file one."

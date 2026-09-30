@@ -15,7 +15,7 @@ interface AdminData {
   flagged: { id: string; total: number; status: string; needsReview: string; createdAt: number }[];
 }
 
-/** Torqline staff console: seller approvals, return cases, orders flagged by the webhook. */
+/** Dolgers staff console: seller approvals, return cases, orders flagged by the webhook. */
 export default function AdminPage() {
   const { user, loading } = useAuth();
   const router = useRouter();

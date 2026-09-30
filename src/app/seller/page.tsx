@@ -76,7 +76,7 @@ function SellerDashboard() {
         <Store className="mx-auto h-12 w-12 text-slate-300" />
         <h1 className="mt-4 font-display text-3xl uppercase">No seller account yet</h1>
         <p className="mt-2 text-muted">
-          {data!.application?.status === "pending" ? "Your application is being reviewed." : "Apply to start selling on Torqline."}
+          {data!.application?.status === "pending" ? "Your application is being reviewed." : "Apply to start selling on Dolgers."}
         </p>
         <Link href="/sell/apply" className="btn btn-brand mt-6">{data!.application ? "View application" : "Apply to sell"}</Link>
       </div>
@@ -168,7 +168,7 @@ function Overview({ user, d, connectParam }: { user: User; d: Required<Dashboard
             {error && <p className="text-sale" role="alert">{error}</p>}
           </div>
         )}
-        <p className="mt-3 text-xs text-muted">Commission: {Math.round(rate * 1000) / 10}% of item prices. Store-wide discount codes and shipping are covered by Torqline.</p>
+        <p className="mt-3 text-xs text-muted">Commission: {Math.round(rate * 1000) / 10}% of item prices. Store-wide discount codes and shipping are covered by Dolgers.</p>
       </section>
       <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
@@ -287,7 +287,7 @@ function ReturnRow({ user, r, onChange }: { user: User; r: ReturnRequest & { id:
       <p className="mt-1 text-muted">Order #{shortId(r.sellerOrderId)} · {new Date(r.createdAt).toLocaleDateString()} · {cents(r.amountCents)}</p>
       <p className="mt-2"><b>{r.reason}</b>{r.details ? `: ${r.details}` : ""}</p>
       {r.sellerNote && <p className="mt-1 text-muted">Your note: {r.sellerNote}</p>}
-      {r.adminNote && <p className="mt-1 text-muted">Torqline: {r.adminNote}</p>}
+      {r.adminNote && <p className="mt-1 text-muted">Dolgers: {r.adminNote}</p>}
       {r.status === "requested" && (
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t pt-3">
           <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note to customer (required to reject)" className="input max-w-md flex-1 py-1.5!" />

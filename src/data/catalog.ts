@@ -1,4 +1,4 @@
-// Original demo catalog for Torqline. All brands, products and copy are fictional.
+// Original demo catalog for Dolgers. All brands, products and copy are fictional.
 // Imported by the app (fallback when Firestore is empty/unconfigured) and by scripts/seed.ts.
 import type { Brand, Category, Post, Product, Seller } from "../lib/types.ts";
 
@@ -73,13 +73,13 @@ export const categories: Category[] = [
   },
 ];
 
-/** Marketplace sellers. "torqline" is first party; the others are fictional third-party vendors. */
+/** Marketplace sellers. "dolgers" is first party; the others are fictional third-party vendors. */
 export const sellers: Seller[] = [
   {
-    slug: "torqline", name: "Torqline", tagline: "Sold and shipped by Torqline",
-    about: "Our own stock, shipped from the Torqline warehouse the same day when you order before 2pm.",
+    slug: "dolgers", name: "Dolgers", tagline: "Sold and shipped by Dolgers",
+    about: "Our own stock, shipped from the Dolgers warehouse the same day when you order before 2pm.",
     rating: 4.8, ratingCount: 12_480, since: "2019-03-01", location: "Austin, TX", color: "#0a5561",
-    handlingDays: 0, returns: "torqline", returnDays: 30, warranty: "manufacturer", pickup: true, status: "active",
+    handlingDays: 0, returns: "dolgers", returnDays: 30, warranty: "manufacturer", pickup: true, status: "active",
   },
   {
     slug: "ridgeline-tool-supply", name: "Ridgeline Tool Supply", tagline: "Contractor supply since 1998",
@@ -89,9 +89,9 @@ export const sellers: Seller[] = [
   },
   {
     slug: "harbor-fastener-co", name: "Harbor Fastener Co.", tagline: "Bits, blades and fixings in bulk",
-    about: "Fasteners and consumables by the box. Returns are handled through the Torqline returns centre.",
+    about: "Fasteners and consumables by the box. Returns are handled through the Dolgers returns centre.",
     rating: 4.4, ratingCount: 874, since: "2025-01-09", location: "Tacoma, WA", color: "#334155",
-    handlingDays: 2, returns: "torqline", returnDays: 30, warranty: "manufacturer", status: "active",
+    handlingDays: 2, returns: "dolgers", returnDays: 30, warranty: "manufacturer", status: "active",
   },
   {
     slug: "prairie-outdoor-power", name: "Prairie Outdoor Power", tagline: "Authorised outdoor power dealer",
@@ -508,7 +508,7 @@ const seeds: Seed[] = [
 
 /**
  * Marketplace and filter fields layered onto the seeds above. Kept separate so the base product copy
- * stays easy to read. Anything missing here defaults to: sold by Torqline, no voltage.
+ * stays easy to read. Anything missing here defaults to: sold by Dolgers, no voltage.
  */
 const extras: Record<string, Partial<Product>> = {
   "voltra-vx12-compact-drill-driver": {
@@ -604,7 +604,7 @@ export const posts: Post[] = [
       "Start by listing the three tools you use most. If they're drills, drivers and a small saw, a compact 12V system may be all you need. If you're cutting sheet goods or running grinders, go straight to 18V.",
       "Finally, check the breadth of the range. A platform with lawn, lighting and storage accessories means fewer chargers cluttering the van.",
     ],
-    author: "Torqline Workshop",
+    author: "Dolgers Workshop",
     date: "2026-09-12",
     icon: "battery",
     tint: "#0e7490",
@@ -619,7 +619,7 @@ export const posts: Post[] = [
       "Rolling cabinets suit mechanics and fabricators who move around a bench. Wall-mounted shadow boards suit woodworkers who need hand tools at eye level.",
       "Whatever you choose, label it. Labels are what keep a system working six months from now.",
     ],
-    author: "Torqline Workshop",
+    author: "Dolgers Workshop",
     date: "2026-08-29",
     icon: "box",
     tint: "#1d4ed8",
@@ -634,7 +634,7 @@ export const posts: Post[] = [
       "Thin-kerf blades reduce the load on cordless saws and extend runtime. Negative hook angles are safer on sliding mitre saws.",
       "Keep a dedicated fine blade for finish work and swap it in only when it counts.",
     ],
-    author: "Torqline Workshop",
+    author: "Dolgers Workshop",
     date: "2026-08-14",
     icon: "saw",
     tint: "#b91c1c",

@@ -163,7 +163,7 @@ function activeChips(f: Filters, ctx: { brands: Brand[]; sellers: Seller[]; sub?
     out.push({ label: f.min !== null && f.max !== null ? `$${f.min}–$${f.max}` : f.min !== null ? `$${f.min}+` : `Under $${f.max}`, clear: { min: null, max: null } });
   if (f.seller)
     out.push({
-      label: f.seller === SELF_SELLER ? "Sold by Torqline" : f.seller === "marketplace" ? "Marketplace sellers" : (ctx.sellers.find((s) => s.slug === f.seller)?.name ?? f.seller),
+      label: f.seller === SELF_SELLER ? "Sold by Dolgers" : f.seller === "marketplace" ? "Marketplace sellers" : (ctx.sellers.find((s) => s.slug === f.seller)?.name ?? f.seller),
       clear: { seller: null },
     });
   return out;
@@ -288,7 +288,7 @@ function FilterPanel({
         <H>Seller</H>
         <ul className="space-y-1.5">
           <Check on={f.seller === SELF_SELLER} href={href({ seller: f.seller === SELF_SELLER ? null : SELF_SELLER })} count={countWith({ seller: SELF_SELLER })}>
-            Sold by Torqline
+            Sold by Dolgers
           </Check>
           <Check on={f.seller === "marketplace"} href={href({ seller: f.seller === "marketplace" ? null : "marketplace" })} count={countWith({ seller: "marketplace" })}>
             Other sellers

@@ -2,7 +2,7 @@ import { BadgeCheck, BarChart3, Banknote, PackageCheck, ShieldCheck, Store } fro
 import Link from "next/link";
 import { COMMISSION_RATE } from "@/lib/marketplace";
 
-export const metadata = { title: "Sell on Torqline" };
+export const metadata = { title: "Sell on Dolgers" };
 
 const steps = [
   { icon: Store, title: "Apply", text: "Tell us about your business and what you sell. We review every application by hand." },
@@ -17,7 +17,7 @@ export default function SellPage() {
       <section className="bg-ink text-white">
         <div className="container-x grid gap-8 py-16 md:grid-cols-2 md:items-center">
           <div>
-            <p className="font-display uppercase tracking-[0.2em] text-accent">Torqline Marketplace</p>
+            <p className="font-display uppercase tracking-[0.2em] text-accent">Dolgers Marketplace</p>
             <h1 className="mt-3 font-display text-5xl uppercase leading-none md:text-6xl">Sell to the trades</h1>
             <p className="mt-4 max-w-md text-white/80">
               List your tools and supplies next to ours. We run the storefront, the checkout and customer payments; you ship and get paid.
@@ -64,7 +64,7 @@ export default function SellPage() {
             <h2 className="font-display text-2xl uppercase">Your responsibilities</h2>
             <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm text-muted">
               <li>Ship within your stated handling time and enter tracking.</li>
-              <li>Respond to return requests within 3 days. If you don&apos;t, the customer can escalate to Torqline.</li>
+              <li>Respond to return requests within 3 days. If you don&apos;t, the customer can escalate to Dolgers.</li>
               <li>Honour your return window (30 days by default) and the manufacturer&apos;s warranty.</li>
               <li>Answer product questions from shoppers.</li>
             </ul>
@@ -73,7 +73,7 @@ export default function SellPage() {
             <h2 className="flex items-center gap-2 font-display text-2xl uppercase"><BarChart3 className="h-6 w-6" /> Disputes &amp; refunds</h2>
             <p className="mt-3 text-sm text-muted">
               If you approve a return, the refund goes back to the customer&apos;s card and the matching share of your payout is
-              reversed. Torqline decides escalated cases and card chargebacks, and may reverse payouts for those too.
+              reversed. Dolgers decides escalated cases and card chargebacks, and may reverse payouts for those too.
             </p>
           </div>
         </div>

@@ -45,7 +45,7 @@ export interface Product {
   brand: string; // brand slug
   category: string; // category slug
   subcategory?: string; // subcategory slug within the category
-  /** Seller slug. Missing means sold by Torqline (first party). */
+  /** Seller slug. Missing means sold by Dolgers (first party). */
   seller?: string;
   description: string;
   specs: string[]; // short highlights
@@ -82,7 +82,7 @@ export interface Category {
 }
 
 /**
- * A marketplace seller. Torqline itself is the seller with slug "torqline".
+ * A marketplace seller. Dolgers itself is the seller with slug "dolgers".
  * Written only by the server (Admin SDK) after an application is approved.
  */
 export interface Seller {
@@ -98,11 +98,11 @@ export interface Seller {
   /** Business days between order and dispatch. */
   handlingDays: number;
   /** Who handles returns for this seller's items. */
-  returns: "torqline" | "seller";
+  returns: "dolgers" | "seller";
   returnDays: number;
   /** Who a customer contacts for warranty claims. */
   warranty: "manufacturer" | "seller";
-  /** Offers free pickup from a Torqline depot (first party only today). */
+  /** Offers free pickup from a Dolgers depot (first party only today). */
   pickup?: boolean;
   status?: "active" | "suspended";
 }
@@ -125,7 +125,7 @@ export interface SellerAccount {
 
 export type ApplicationStatus = "pending" | "approved" | "rejected";
 
-/** A request to sell on Torqline. Doc id = applicant's uid. */
+/** A request to sell on Dolgers. Doc id = applicant's uid. */
 export interface SellerApplication {
   uid: string;
   email: string;
@@ -183,8 +183,8 @@ export type ReturnStatus =
   | "requested"
   | "approved" // refund issued
   | "rejected" // by the seller; the customer can escalate
-  | "escalated" // waiting on Torqline
-  | "resolved_refund" // Torqline refunded
+  | "escalated" // waiting on Dolgers
+  | "resolved_refund" // Dolgers refunded
   | "resolved_denied";
 
 export interface ReturnRequest {
@@ -277,7 +277,7 @@ export interface Order {
     variantName: string;
     price: number;
     qty: number;
-    /** Seller slug. Missing on orders placed before the marketplace; treat as "torqline". */
+    /** Seller slug. Missing on orders placed before the marketplace; treat as "dolgers". */
     seller?: string;
   }[];
   /** Distinct sellers in the order. */

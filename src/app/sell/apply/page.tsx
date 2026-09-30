@@ -131,7 +131,7 @@ export default function ApplyPage() {
 
   return (
     <div className="container-x max-w-3xl py-10">
-      <h1 className="font-display text-4xl uppercase">Apply to sell on Torqline</h1>
+      <h1 className="font-display text-4xl uppercase">Apply to sell on Dolgers</h1>
       <p className="mt-2 text-muted">
         Step 1 of 2. After we approve your application, you&apos;ll verify your identity, business and bank details securely with
         Stripe. We never ask for tax IDs or bank numbers on this form.

@@ -38,7 +38,7 @@ export default async function ProductPage(props: PageProps<"/products/[slug]">) 
   const cat = categories.find((c) => c.slug === product.category);
   const sub = cat?.subcategories?.find((s) => s.slug === product.subcategory);
   const seller = sellers.find((s) => s.slug === sellerOf(product));
-  const sellerName = (p: Product) => sellers.find((s) => s.slug === sellerOf(p))?.name ?? "Torqline";
+  const sellerName = (p: Product) => sellers.find((s) => s.slug === sellerOf(p))?.name ?? "Dolgers";
   const fbt = boughtTogether(product, all);
   const compare = [product, ...compareSet(product, all)];
   const related = all.filter((p) => p.category === product.category && p.id !== product.id).slice(0, 6);
@@ -223,7 +223,7 @@ function SoldBy({ seller }: { seller: Seller }) {
       <p className="flex items-start gap-2"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-muted" /> {policy.warranty}</p>
       {!self && (
         <p className="text-xs text-muted">
-          Marketplace item. Payment is taken by Torqline; if a return or problem isn&apos;t resolved by the seller, open a case from your account and we&apos;ll step in.
+          Marketplace item. Payment is taken by Dolgers; if a return or problem isn&apos;t resolved by the seller, open a case from your account and we&apos;ll step in.
         </p>
       )}
     </div>
@@ -235,7 +235,7 @@ function PolicyCard({ seller }: { seller: Seller }) {
     <div className="rounded-lg bg-surface p-5 text-sm">
       <h2 className="font-display text-lg uppercase">About the seller</h2>
       <p className="mt-2 font-semibold">{seller.name}</p>
-      <p className="text-muted">{seller.location} · on Torqline since {seller.since.slice(0, 4)}</p>
+      <p className="text-muted">{seller.location} · on Dolgers since {seller.since.slice(0, 4)}</p>
       <p className="mt-2 text-muted">{seller.about}</p>
       <Link href={`/sellers/${seller.slug}`} className="btn btn-outline mt-4 w-full">Visit storefront</Link>
     </div>

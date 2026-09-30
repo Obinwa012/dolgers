@@ -35,7 +35,7 @@ export default function DeliveryPromise({
       {seller?.pickup && (
         <p className="flex items-center gap-1.5">
           <Store className="h-3.5 w-3.5 shrink-0 text-brand-700" />
-          <span>Free pickup{compact ? "" : " at the Torqline depot, ready in 2 hours"}</span>
+          <span>Free pickup{compact ? "" : " at the Dolgers depot, ready in 2 hours"}</span>
         </p>
       )}
     </div>

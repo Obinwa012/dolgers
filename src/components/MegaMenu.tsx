@@ -78,8 +78,8 @@ export default function MegaMenu({ id, categories, onNavigate }: { id: string; c
           <Link href={`/collections/${cat.slug}?sale=1`} onClick={onNavigate} className="rounded-full bg-sale/10 px-3 py-1 font-semibold text-sale hover:bg-sale/20">
             {cat.name} deals
           </Link>
-          <Link href={`/collections/${cat.slug}?seller=torqline`} onClick={onNavigate} className="rounded-full bg-surface px-3 py-1 hover:bg-slate-200">
-            Sold by Torqline
+          <Link href={`/collections/${cat.slug}?seller=dolgers`} onClick={onNavigate} className="rounded-full bg-surface px-3 py-1 hover:bg-slate-200">
+            Sold by Dolgers
           </Link>
           <Link href={`/collections/${cat.slug}?stock=in`} onClick={onNavigate} className="rounded-full bg-surface px-3 py-1 hover:bg-slate-200">
             In stock

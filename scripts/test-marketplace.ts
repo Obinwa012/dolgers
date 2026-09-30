@@ -44,8 +44,8 @@ test("orders record each line's seller; inactive listings can't be bought", () =
     products: byId,
     uid: "u1", email: "a@b.co", hasPaidOrder: false, now: 1,
   });
-  assert.deepEqual(o.items.map((i) => i.seller), ["torqline", "ridgeline-tool-supply"]);
-  assert.deepEqual(o.sellers, ["torqline", "ridgeline-tool-supply"]);
+  assert.deepEqual(o.items.map((i) => i.seller), ["dolgers", "ridgeline-tool-supply"]);
+  assert.deepEqual(o.sellers, ["dolgers", "ridgeline-tool-supply"]);
 
   const inactive = new Map(byId);
   inactive.set("brunn-bn18-brad-nailer", { ...byId.get("brunn-bn18-brad-nailer")!, listingStatus: "inactive" });
@@ -65,7 +65,7 @@ test("order split: commission on third-party lines only, exact cents", () => {
   ];
   const split = splitOrder(items, { "harbor-fastener-co": 0.1 });
   const by = Object.fromEntries(split.map((s) => [s.seller, s]));
-  assert.deepEqual([by.torqline.grossCents, by.torqline.commissionCents, by.torqline.netCents], [29_800, 0, 29_800]);
+  assert.deepEqual([by.dolgers.grossCents, by.dolgers.commissionCents, by.dolgers.netCents], [29_800, 0, 29_800]);
   assert.equal(by["ridgeline-tool-supply"].grossCents, 35_997);
   assert.equal(by["ridgeline-tool-supply"].commissionCents, Math.round(35_997 * COMMISSION_RATE)); // 4320
   assert.equal(by["ridgeline-tool-supply"].netCents, 35_997 - 4_320);
@@ -76,7 +76,7 @@ test("order split: commission on third-party lines only, exact cents", () => {
 
   const sos = buildSellerOrders({ items, uid: "u1", address }, "ord1", {}, 5);
   assert.deepEqual(sos.map((s) => [s.id, s.payout]), [
-    ["ord1_torqline", "none"],
+    ["ord1_dolgers", "none"],
     ["ord1_ridgeline-tool-supply", "held"],
     ["ord1_harbor-fastener-co", "held"],
   ]);
@@ -190,9 +190,9 @@ test("collection filters", () => {
   assert.ok(withBattery.includes("voltra-vx12-compact-drill-driver")); // kit option has batteries
   assert.ok(!withBattery.includes("brunn-bn18-brad-nailer"));
   assert.ok(!withBattery.includes("voltra-5ah-battery-twin")); // batteries themselves aren't "battery included" tools
-  assert.ok(ids({ seller: "torqline" }).every((id) => !byId.get(id)!.seller));
+  assert.ok(ids({ seller: "dolgers" }).every((id) => !byId.get(id)!.seller));
   assert.ok(ids({ seller: "marketplace" }).every((id) => !!byId.get(id)!.seller));
-  assert.equal(ids({ seller: "torqline" }).length + ids({ seller: "marketplace" }).length, all.length);
+  assert.equal(ids({ seller: "dolgers" }).length + ids({ seller: "marketplace" }).length, all.length);
   assert.ok(ids({ seller: "prairie-outdoor-power" }).includes("kestrel-lm46-cordless-mower"));
   // Price range matches if any option is in range (VX12: $129 tool, $199 kit).
   assert.ok(ids({ min: "150", max: "200" }).includes("voltra-vx12-compact-drill-driver"));
@@ -227,7 +227,7 @@ test("financing, specs, bought-together, compare, policies", () => {
   assert.equal(monthlyPaymentCents(19_899), null);
   assert.equal(monthlyPaymentCents(49_900), 4_159); // 415.83 rounded up
   const saw = byId.get("kestrel-cs165-brushless-circular-saw")!;
-  const rows = fullSpecs(saw, { brand: "Kestrel", seller: "Torqline" });
+  const rows = fullSpecs(saw, { brand: "Kestrel", seller: "Dolgers" });
   assert.ok(rows.some((r) => r.label === "Max cut depth at 45°"));
   assert.ok(rows.some((r) => r.label === "Battery included" && r.value.includes("Kit with 5.0Ah: Yes")));
   const vx = fullSpecs(byId.get("voltra-vx12-compact-drill-driver")!, {});
@@ -245,5 +245,5 @@ test("financing, specs, bought-together, compare, policies", () => {
 
   const ridge = sellers.find((s) => s.slug === "ridgeline-tool-supply")!;
   assert.match(policyLines(ridge).returns, /handled by Ridgeline/);
-  assert.match(policyLines(sellers[0]).returns, /handled by Torqline\.$/);
+  assert.match(policyLines(sellers[0]).returns, /handled by Dolgers\.$/);
 });

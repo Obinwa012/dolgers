@@ -1,4 +1,4 @@
-# Deploying Torqline
+# Deploying Dolgers
 
 Target: **Firebase App Hosting** (runs Next.js server features: API routes, ISR) + Firestore + Auth + Stripe.
 Steps marked 👤 need your accounts; everything else is already configured in this repo.
@@ -7,7 +7,7 @@ Steps marked 👤 need your accounts; everything else is already configured in t
 
 ```bash
 npm install
-npx firebase-tools emulators:start --project demo-torqline   # Auth + Firestore, UI at :4000
+npx firebase-tools emulators:start --project demo-dolgers   # Auth + Firestore, UI at :4000
 cp .env.local.example .env.local   # then use the "Local emulators" block at the bottom
 npm run dev
 ```
@@ -46,17 +46,17 @@ With no `STRIPE_SECRET_KEY`, checkout runs in demo mode (orders saved, no paymen
 ## 3. 👤 App Hosting backend
 
 ```bash
-firebase apphosting:backends:create --backend torqline --primary-region us-central1
+firebase apphosting:backends:create --backend dolgers --primary-region us-central1
 ```
 Connect your GitHub repo when prompted (root directory `/`, live branch `main`). Every push to `main`
-then builds and rolls out. The backend URL looks like `https://torqline--<project>.<region>.hosted.app`.
+then builds and rolls out. The backend URL looks like `https://dolgers--<project>.<region>.hosted.app`.
 
 Put that URL in `apphosting.yaml` → `SITE_URL`, then create the secrets:
 
 ```bash
 firebase apphosting:secrets:set STRIPE_SECRET_KEY        # paste sk_test_... (sk_live_... later)
 firebase apphosting:secrets:set STRIPE_WEBHOOK_SECRET    # from step 4
-firebase apphosting:secrets:grantaccess STRIPE_SECRET_KEY,STRIPE_WEBHOOK_SECRET --backend torqline
+firebase apphosting:secrets:grantaccess STRIPE_SECRET_KEY,STRIPE_WEBHOOK_SECRET --backend dolgers
 ```
 
 No Firebase keys to copy: App Hosting injects the web config at build (mapped in `next.config.ts`),

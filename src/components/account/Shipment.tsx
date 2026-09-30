@@ -13,9 +13,9 @@ const RETURN_LABEL: Record<ReturnStatus, string> = {
   requested: "Return requested, waiting on seller",
   approved: "Return approved, refund issued",
   rejected: "Seller declined the return",
-  escalated: "Escalated to Torqline",
-  resolved_refund: "Torqline refunded you",
-  resolved_denied: "Torqline declined the return",
+  escalated: "Escalated to Dolgers",
+  resolved_refund: "Dolgers refunded you",
+  resolved_denied: "Dolgers declined the return",
 };
 
 const DAY = 86_400_000;
@@ -62,13 +62,13 @@ export default function Shipment({
           <div key={r.id} className="mt-2 rounded border bg-white p-2">
             <p><b>{RETURN_LABEL[r.status]}</b> · {r.qty} × {r.title} · {money((r.refundedCents ?? r.amountCents) / 100)}</p>
             {r.sellerNote && <p className="text-muted">Seller: {r.sellerNote}</p>}
-            {r.adminNote && <p className="text-muted">Torqline: {r.adminNote}</p>}
+            {r.adminNote && <p className="text-muted">Dolgers: {r.adminNote}</p>}
             {escalatable && (
               <button
                 className="mt-1 text-sm font-semibold text-brand-700 underline"
                 onClick={() => api(user, "/api/returns", { action: "escalate", returnId: r.id }).then(onChange, (e) => alert(e.message))}
               >
-                Ask Torqline to step in
+                Ask Dolgers to step in
               </button>
             )}
           </div>
@@ -79,7 +79,7 @@ export default function Shipment({
         open ? <ReturnForm user={user} s={s} onDone={() => { setOpen(false); onChange(); }} />
           : (
             <button onClick={() => setOpen(true)} className="mt-2 text-sm font-semibold text-brand-700 underline">
-              Return an item{seller ? ` (handled by ${seller.returns === "torqline" ? "Torqline" : seller.name})` : ""}
+              Return an item{seller ? ` (handled by ${seller.returns === "dolgers" ? "Dolgers" : seller.name})` : ""}
             </button>
           )
       )}

@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 const PAGES: Record<string, { title: string; body: string[] }> = {
-  about: { title: "About Torqline", body: ["Torqline is a demo tool store built with Next.js, Tailwind CSS and Firebase.", "Replace this copy with your own story."] },
+  about: { title: "About Dolgers", body: ["Dolgers is a demo tool store built with Next.js, Tailwind CSS and Firebase.", "Replace this copy with your own story."] },
   shipping: { title: "Shipping & Returns", body: ["Orders over $99 ship free within the contiguous US.", "Unused items can be returned within 30 days."] },
   warranty: { title: "Warranty", body: ["Powered tools carry a 3-year warranty against manufacturing defects."] },
-  contact: { title: "Contact Us", body: ["Email hello@torqline.example or call (555) 010-4477, 7 days a week."] },
+  contact: { title: "Contact Us", body: ["Email hello@dolgers.example or call (555) 010-4477, 7 days a week."] },
   privacy: { title: "Privacy Policy", body: ["Placeholder policy. Replace with your own before launch."] },
   trade: { title: "Trade Accounts", body: ["Trade accounts get net-30 terms and volume pricing. Contact us to apply."] },
   careers: { title: "Careers", body: ["No open roles right now. Check back soon."] },

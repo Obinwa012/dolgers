@@ -1,4 +1,4 @@
-# Torqline: Tool Store (Next.js + Tailwind + Firebase)
+# Dolgers: Tool Store (Next.js + Tailwind + Firebase)
 
 A promotion-driven tool store with a third-party marketplace. Storefront: marquee announcement bar,
 two-tier header with a mega menu, rotating hero carousel, deals by category, top deals, bundle offers,
@@ -66,17 +66,17 @@ in `next dev` (or with `CHECKOUT_DEMO_MODE=true`) and refuses in production.
 "Admin" means a custom claim `admin: true` (set it with the Admin SDK). Staff use `/admin`.
 
 ## Marketplace
-- **Who sells what:** `product.seller` (missing = Torqline). Cards and product pages show "Sold by", the
+- **Who sells what:** `product.seller` (missing = Dolgers). Cards and product pages show "Sold by", the
   seller's rating, and who handles returns and warranty (`seller.returns`, `seller.warranty`).
-- **Money:** customers pay Torqline in one Stripe Checkout (separate charges and transfers). The
+- **Money:** customers pay Dolgers in one Stripe Checkout (separate charges and transfers). The
   webhook splits each paid order into `sellerOrders`. When a seller enters tracking, their net
   (item prices minus `COMMISSION_RATE`, 12% by default, per-seller override) is transferred to their
   Stripe Connect account, funded from the customer's charge. Discount codes, bundle savings and
-  shipping are Torqline's. Refunds claw back the seller's proportional share.
+  shipping are Dolgers's. Refunds claw back the seller's proportional share.
 - **Identity and business checks** happen in Stripe Connect Express onboarding (started from the seller
-  dashboard). Torqline's own application form deliberately collects no tax IDs or bank details.
+  dashboard). Dolgers's own application form deliberately collects no tax IDs or bank details.
 - **Returns:** customer requests from *My account* → seller approves (refund issued) or rejects with a
-  reason → customer can escalate a rejection, or a request unanswered for 3 days → Torqline decides on
+  reason → customer can escalate a rejection, or a request unanswered for 3 days → Dolgers decides on
   `/admin`. Card disputes (`charge.dispute.created`) flag the order for review.
 - **Bundles** (`BUNDLES` in `src/lib/pricing.ts`) are priced server-side like discount codes.
 - **Financing** copy on product pages is a placeholder (`FINANCING` in `src/lib/shopping.ts`): turn on a

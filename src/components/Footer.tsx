@@ -20,10 +20,10 @@ const cols = [
   {
     title: "Company",
     links: [
-      ["About Torqline", "/pages/about"],
+      ["About Dolgers", "/pages/about"],
       ["Workshop Blog", "/blog"],
       ["Trade Accounts", "/pages/trade"],
-      ["Sell on Torqline", "/sell"],
+      ["Sell on Dolgers", "/sell"],
       ["Seller Dashboard", "/seller"],
       ["Careers", "/pages/careers"],
     ],
@@ -54,7 +54,7 @@ export default function Footer() {
             <Phone className="h-4 w-4" /> (555) 010-4477
           </p>
           <p className="flex items-center gap-3 text-white/85">
-            <Mail className="h-4 w-4" /> hello@torqline.example
+            <Mail className="h-4 w-4" /> hello@dolgers.example
           </p>
         </div>
         {cols.map((c) => (
@@ -81,7 +81,7 @@ export default function Footer() {
       </div>
       <div className="border-t border-white/15">
         <div className="container-x flex flex-col items-center justify-between gap-2 py-5 text-xs text-white/70 sm:flex-row">
-          <p>© {new Date().getFullYear()} Torqline Supply Co. Demo storefront.</p>
+          <p>© {new Date().getFullYear()} Dolgers Supply Co. Demo storefront.</p>
           <p>Built with Next.js, Tailwind CSS and Firebase</p>
         </div>
       </div>
