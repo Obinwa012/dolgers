@@ -1,13 +1,21 @@
 import Link from "next/link";
 
-export default function Logo({ className = "" }: { className?: string }) {
+/** Dolgers wordmark. `tone="light"` for dark backgrounds, default dark text for light backgrounds. */
+export default function Logo({ className = "", tone = "dark" }: { className?: string; tone?: "dark" | "light" }) {
+  const light = tone === "light";
   return (
-    <Link href="/" className={`flex items-center gap-2 text-white ${className}`} aria-label="Dolgers home">
-      <svg viewBox="0 0 32 32" className="h-8 w-8" aria-hidden>
-        <rect width="32" height="32" rx="6" fill="#E08A00" />
-        <path d="M8 9h16v4h-6v12h-4V13H8z" fill="#1B1B1D" />
-      </svg>
-      <span className="font-display text-2xl font-semibold uppercase tracking-wider">Dolgers</span>
+    <Link href="/" className={`flex items-center gap-2 ${className}`} aria-label="Dolgers home">
+      <span className="grid h-10 w-10 place-items-center rounded bg-accent font-display text-2xl font-black text-white">
+        D
+      </span>
+      <span className="leading-none">
+        <span className={`block font-display text-[28px] font-black tracking-wide ${light ? "text-white" : "text-ink"}`}>
+          DOLGERS
+        </span>
+        <span className="block text-[9px] font-bold tracking-[3.5px] text-muted">
+          PRO TOOLS &amp; HARDWARE
+        </span>
+      </span>
     </Link>
   );
 }

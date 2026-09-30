@@ -76,29 +76,40 @@ export default function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
             >
               <Icon
                 aria-hidden
-                strokeWidth={0.9}
-                className="absolute -right-16 top-1/2 h-[320px] w-[320px] -translate-y-1/2 opacity-20 md:right-[4%] md:h-[460px] md:w-[460px] md:opacity-90 xl:h-[520px] xl:w-[520px]"
+                strokeWidth={0.7}
+                className="absolute right-10 top-1/2 hidden h-[300px] w-[300px] -translate-y-1/2 opacity-95 md:block"
                 style={{ color: s.accent }}
               />
-              <div className="container-x relative flex min-h-[460px] flex-col justify-center pb-24 pt-10 md:min-h-[540px]">
-                <div className="max-w-2xl">
+              {/* hazard stripe wash */}
+              <div
+                aria-hidden
+                className="absolute inset-y-0 right-0 w-[34%] opacity-[0.14]"
+                style={{ background: `repeating-linear-gradient(-45deg, ${s.accent} 0 18px, transparent 18px 36px)` }}
+              />
+              <div className="container-x relative flex min-h-[380px] flex-col justify-center py-[50px]">
+                <div className="max-w-[560px]">
                   <p
-                    className="inline-block -skew-x-12 px-3 py-1 font-display text-sm uppercase tracking-[0.2em] text-ink md:text-base"
+                    className="inline-block rounded px-3.5 py-1.5 font-display text-xs font-extrabold uppercase tracking-[2px] text-white"
                     style={{ background: s.accent }}
                   >
-                    <span className="inline-block skew-x-12">{s.eyebrow}</span>
+                    {s.eyebrow}
                   </p>
-                  <h2 className="mt-4 font-display text-4xl uppercase leading-[0.95] sm:text-5xl md:max-w-xl md:text-6xl xl:max-w-2xl xl:text-7xl">{s.title}</h2>
-                  <p className="mt-4 max-w-lg text-white/85 md:text-lg">{s.text}</p>
+                  <h2 className="mt-4 font-display text-5xl font-black uppercase leading-[1.02] tracking-wide md:text-[56px]">{s.title}</h2>
+                  <p className="mt-3.5 max-w-[440px] text-base text-white/70">{s.text}</p>
                   {s.callout && (
                     <p className="mt-5 flex items-baseline gap-3">
-                      <span className="font-display text-4xl md:text-6xl" style={{ color: s.accent }}>{s.callout}</span>
+                      <span className="font-display text-4xl font-black md:text-5xl" style={{ color: s.accent }}>{s.callout}</span>
                       {s.calloutNote && <span className="text-sm text-white/80 md:text-base">{s.calloutNote}</span>}
                     </p>
                   )}
-                  <Link href={s.href} className="btn mt-7 px-8 text-lg text-ink hover:bg-white" style={{ background: s.accent }}>
-                    {s.cta}
-                  </Link>
+                  <p className="mt-6 flex flex-wrap gap-3">
+                    <Link href={s.href} className="rounded px-10 py-[15px] font-display text-[15px] font-extrabold uppercase tracking-wider text-white hover:brightness-110" style={{ background: s.accent }}>
+                      {s.cta}
+                    </Link>
+                    <Link href="/sell" className="rounded border-2 border-white/25 px-8 py-[13px] font-display text-[15px] font-extrabold uppercase tracking-wider text-white hover:border-accent hover:text-accent">
+                      Become a Seller
+                    </Link>
+                  </p>
                 </div>
               </div>
             </div>

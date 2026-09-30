@@ -1,30 +1,21 @@
-import { Zap } from "lucide-react";
+import Link from "next/link";
 
-const messages = [
-  "All orders ship from US warehouses",
-  "Combo Kit Event: save up to $200 on combo kits",
-  "Free shipping on orders over $99",
-  "New customers: 5% off with code FIRSTBUILD",
-];
-
+/** Dark utility topbar: contact info left, account links right. */
 export default function AnnouncementBar() {
-  const row = [...messages, ...messages, ...messages];
   return (
-    <div className="overflow-hidden bg-ink text-white" aria-label="Store announcements">
-      <div className="flex w-max animate-marquee py-2 hover:[animation-play-state:paused]">
-        {[0, 1].map((k) => (
-          <div key={k} className="flex shrink-0" aria-hidden={k === 1}>
-            {row.map((m, i) => (
-              <span
-                key={i}
-                className="flex items-center gap-2 px-10 text-xs font-medium uppercase tracking-wide"
-              >
-                <Zap className="h-3.5 w-3.5 fill-accent text-accent" />
-                {m}
-              </span>
-            ))}
-          </div>
-        ))}
+    <div className="bg-ink text-white" aria-label="Store information">
+      <div className="container-x flex h-9 items-center justify-between text-xs font-semibold">
+        <p className="flex items-center gap-4 text-white/70">
+          <span className="hidden sm:inline">Call us: (555) 010-4477</span>
+          <span className="hidden md:inline">sales@dolgers.com</span>
+          <span className="hidden lg:inline">Mon–Sat 7AM–7PM CT</span>
+          <span className="sm:hidden">All orders ship from US warehouses</span>
+        </p>
+        <nav className="flex items-center gap-4 uppercase tracking-wide" aria-label="Utility">
+          <Link href="/account" className="text-white/70 hover:text-accent">Track Order</Link>
+          <Link href="/sell" className="text-white/70 hover:text-accent">Become a Seller</Link>
+          <Link href="/account" className="text-white/70 hover:text-accent">My Account</Link>
+        </nav>
       </div>
     </div>
   );
