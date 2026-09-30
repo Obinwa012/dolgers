@@ -7,7 +7,7 @@ import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import { AuthProvider } from "@/context/AuthProvider";
 import { ShopProvider } from "@/context/ShopProvider";
-import { getCategories, getProducts, getSellers } from "@/lib/catalog";
+import { getBrands, getCategories, getProducts, getSellers } from "@/lib/catalog";
 import "./globals.css";
 
 const heebo = Heebo({ variable: "--font-heebo", subsets: ["latin"], weight: ["400", "500", "600", "700", "800", "900"] });
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 export const revalidate = 300;
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const [products, categories, sellers] = await Promise.all([getProducts(), getCategories(), getSellers()]);
+  const [products, categories, sellers, brands] = await Promise.all([getProducts(), getCategories(), getSellers(), getBrands()]);
   return (
     <html lang="en" className={`${heebo.variable} antialiased`}>
       <body className="flex min-h-screen flex-col font-sans">
@@ -30,7 +30,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               Skip to content
             </a>
             <AnnouncementBar />
-            <Header categories={categories} />
+            <Header categories={categories} brands={brands} />
             <main id="main" className="flex-1">
               {children}
             </main>

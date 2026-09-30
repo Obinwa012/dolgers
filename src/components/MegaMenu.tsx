@@ -1,108 +1,82 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
 import { useShop } from "@/context/ShopProvider";
 import { money, onSale } from "@/lib/catalog";
 import type { Category, Product } from "@/lib/types";
-import ToolArt, { ICONS } from "./ToolArt";
+import ToolArt from "./ToolArt";
 
 const saving = (p: Product) =>
   Math.max(0, ...p.variants.map((v) => (v.compareAtPrice && v.compareAtPrice > v.price ? v.compareAtPrice - v.price : 0)));
 
 /**
- * Desktop mega menu: categories on the left; the hovered/focused one's subcategories as image
- * tiles; and that category's biggest current deal on the right.
+ * Full-width category mega menu: columns of categories with their subcategory
+ * links, plus a featured deal tile on the right.
  */
-export default function MegaMenu({ id, categories, onNavigate }: { id: string; categories: Category[]; onNavigate: () => void }) {
+export default function MegaMenu({ categories, onNavigate }: { categories: Category[]; onNavigate: () => void }) {
   const { products } = useShop();
-  const [active, setActive] = useState(categories[0]?.slug);
-  const cat = categories.find((c) => c.slug === active) ?? categories[0];
-  if (!cat) return null;
-
-  const inCat = products.filter((p) => p.category === cat.slug);
-  const count = (sub: string) => inCat.filter((p) => p.subcategory === sub).length;
-  const deal = inCat.filter((p) => onSale(p) && p.stock > 0).sort((a, b) => saving(b) - saving(a))[0];
+  const count = (catSlug: string, subSlug: string) =>
+    products.filter((p) => p.category === catSlug && p.subcategory === subSlug).length;
+  const deal = products.filter((p) => onSale(p) && p.stock > 0).sort((a, b) => saving(b) - saving(a))[0];
 
   return (
-    <div id={id} className="absolute inset-x-4 top-full z-50 grid grid-cols-[240px_1fr_260px] overflow-hidden rounded-b-lg border border-slate-200 bg-white shadow-2xl md:inset-x-7">
-      <ul className="border-r bg-surface py-2" aria-label="Categories">
-        {categories.map((c) => {
-          const Icon = ICONS[c.icon];
-          const on = c.slug === cat.slug;
-          return (
-            <li key={c.slug}>
+    <div className="absolute inset-x-0 top-full z-50 border-b border-slate-200 bg-white shadow-[0_28px_50px_-20px_rgba(0,0,0,0.25)]">
+      <div className="container-x grid grid-cols-[1fr_290px] gap-10 py-8">
+        <div className="grid grid-cols-3 gap-x-8 gap-y-8">
+          {categories.map((c) => (
+            <div key={c.slug}>
               <Link
                 href={`/collections/${c.slug}`}
-                onMouseEnter={() => setActive(c.slug)}
-                onFocus={() => setActive(c.slug)}
                 onClick={onNavigate}
-                aria-current={on ? "true" : undefined}
-                className={`flex items-center gap-3 px-4 py-2.5 text-sm ${on ? "bg-white font-semibold text-brand-700" : "hover:bg-white"}`}
+                className="text-[13px] font-extrabold uppercase tracking-wider text-ink hover:text-accent"
               >
-                <Icon className="h-4 w-4" style={{ color: c.tint }} />
-                <span className="flex-1">{c.name}</span>
-                <ChevronRight className={`h-4 w-4 ${on ? "text-brand-700" : "text-slate-300"}`} />
+                {c.name}
               </Link>
-            </li>
-          );
-        })}
-      </ul>
-
-      <div className="p-6">
-        <div className="mb-4 flex items-baseline justify-between">
-          <h3 className="font-display text-2xl uppercase">{cat.name}</h3>
-          <Link href={`/collections/${cat.slug}`} onClick={onNavigate} className="text-sm font-semibold text-brand-700 hover:underline">
-            Shop all {inCat.length}
-          </Link>
-        </div>
-        <ul className="grid grid-cols-3 gap-3 xl:grid-cols-4">
-          {(cat.subcategories ?? []).map((s) => (
-            <li key={s.slug}>
+              <ul className="mt-2.5 space-y-1.5">
+                {(c.subcategories ?? []).map((s) => (
+                  <li key={s.slug} className="flex items-baseline justify-between gap-2">
+                    <Link
+                      href={`/collections/${c.slug}?sub=${s.slug}`}
+                      onClick={onNavigate}
+                      className="text-sm text-slate-500 transition hover:text-accent"
+                    >
+                      {s.name}
+                    </Link>
+                    <span className="text-[11px] text-slate-300">{count(c.slug, s.slug) || ""}</span>
+                  </li>
+                ))}
+              </ul>
               <Link
-                href={`/collections/${cat.slug}?sub=${s.slug}`}
+                href={`/collections/${c.slug}`}
                 onClick={onNavigate}
-                className="group flex flex-col overflow-hidden rounded-lg border hover:border-ink"
+                className="mt-2 inline-block text-xs font-bold uppercase tracking-wide text-slate-400 transition hover:text-accent"
               >
-                <span className="block aspect-[4/3] overflow-hidden">
-                  <ToolArt icon={s.icon} tint={cat.tint} alt="" className="transition duration-300 group-hover:scale-105" />
-                </span>
-                <span className="px-3 py-2 text-sm font-medium group-hover:text-brand-700">{s.name}</span>
-                <span className="-mt-2 px-3 pb-2 text-xs text-muted">{count(s.slug)} product{count(s.slug) === 1 ? "" : "s"}</span>
+                Shop all &rarr;
               </Link>
-            </li>
+            </div>
           ))}
-        </ul>
-        <div className="mt-5 flex flex-wrap gap-2 text-sm">
-          <Link href={`/collections/${cat.slug}?sale=1`} onClick={onNavigate} className="rounded-full bg-sale/10 px-3 py-1 font-semibold text-sale hover:bg-sale/20">
-            {cat.name} deals
-          </Link>
-          <Link href={`/collections/${cat.slug}?seller=dolgers`} onClick={onNavigate} className="rounded-full bg-surface px-3 py-1 hover:bg-slate-200">
-            Sold by Dolgers
-          </Link>
-          <Link href={`/collections/${cat.slug}?stock=in`} onClick={onNavigate} className="rounded-full bg-surface px-3 py-1 hover:bg-slate-200">
-            In stock
-          </Link>
         </div>
-      </div>
 
-      <div className="border-l bg-ink p-5 text-white">
-        {deal ? (
-          <Link href={`/products/${deal.slug}`} onClick={onNavigate} className="group block">
-            <p className="font-display text-sm uppercase tracking-widest text-accent">Top deal</p>
-            <span className="mt-3 block aspect-square overflow-hidden rounded-lg">
-              <ToolArt icon={deal.icon} tint={deal.tint} image={deal.image} alt={deal.title} variant="bold" className="transition duration-300 group-hover:scale-105" />
-            </span>
-            <p className="mt-3 line-clamp-2 text-sm">{deal.title}</p>
-            <p className="mt-1 font-display text-2xl text-accent">Save {money(saving(deal))}</p>
-          </Link>
-        ) : (
-          <Link href="/collections/all?sale=1" onClick={onNavigate} className="block">
-            <p className="font-display text-sm uppercase tracking-widest text-accent">Deals</p>
-            <p className="mt-3 font-display text-2xl uppercase">See every deal in the store</p>
-          </Link>
-        )}
+        <aside className="overflow-hidden rounded bg-ink text-white">
+          {deal ? (
+            <Link href={`/products/${deal.slug}`} onClick={onNavigate} className="group block p-5">
+              <p className="font-display text-xs font-bold uppercase tracking-[0.2em] text-accent">Top deal</p>
+              <span className="mt-3 block aspect-[4/3] overflow-hidden rounded">
+                <ToolArt icon={deal.icon} tint={deal.tint} image={deal.image} alt={deal.title} variant="bold" className="transition duration-300 group-hover:scale-105" />
+              </span>
+              <p className="mt-3 line-clamp-2 text-sm font-medium">{deal.title}</p>
+              <p className="mt-1.5 font-display text-xl font-extrabold text-accent">Save {money(saving(deal))}</p>
+              <span className="mt-3 inline-block rounded bg-accent px-4 py-2 text-xs font-extrabold uppercase tracking-wider text-white transition group-hover:bg-[#c97a00]">
+                Shop the deal
+              </span>
+            </Link>
+          ) : (
+            <Link href="/collections/all?sale=1" onClick={onNavigate} className="block p-5">
+              <p className="font-display text-xs font-bold uppercase tracking-[0.2em] text-accent">Deals</p>
+              <p className="mt-3 font-display text-2xl font-extrabold uppercase leading-tight">See every deal in the store</p>
+            </Link>
+          )}
+        </aside>
       </div>
     </div>
   );

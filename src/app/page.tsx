@@ -1,4 +1,4 @@
-import { BatteryCharging, Check, Drill } from "lucide-react";
+import { ArrowRight, BatteryCharging, Check, Drill } from "lucide-react";
 import Link from "next/link";
 import ProductCard from "@/components/ProductCard";
 import ToolArt, { ICONS } from "@/components/ToolArt";
@@ -97,17 +97,33 @@ export default async function Home() {
       <section className="pb-2 pt-[46px]">
         <div className="container-x">
           <SectionHead title="Featured" accent="Categories" href="/collections/all" linkLabel="View All" />
-          <div className="grid grid-cols-3 gap-3.5 sm:grid-cols-4 lg:grid-cols-6">
-            {categories.slice(0, 12).map((c) => {
-              const Icon = ICONS[c.icon];
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            {categories.map((c) => {
+              const n = products.filter((p) => p.category === c.slug).length;
               return (
                 <Link
                   key={c.slug}
                   href={`/collections/${c.slug}`}
-                  className="group rounded border border-slate-200 bg-surface px-2.5 py-[22px] text-center transition hover:-translate-y-0.5 hover:border-accent hover:bg-white hover:shadow-[0_6px_18px_rgba(0,0,0,0.08)]"
+                  className="group relative block overflow-hidden rounded"
                 >
-                  <Icon className="mx-auto mb-2.5 h-11 w-11 text-[#3a3a3e] group-hover:text-accent" strokeWidth={1.6} />
-                  <span className="block text-xs font-bold uppercase tracking-wide text-[#3a3a3e]">{c.name}</span>
+                  <span className="block aspect-[16/10] overflow-hidden bg-ink">
+                    <img
+                      src={`/images/categories/${c.slug}.jpg`}
+                      alt={c.name}
+                      loading="lazy"
+                      className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                    />
+                  </span>
+                  <span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
+                  <span className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-4">
+                    <span>
+                      <span className="block font-display text-lg font-extrabold uppercase leading-tight text-white">{c.name}</span>
+                      <span className="text-xs font-medium text-white/70">{n} product{n === 1 ? "" : "s"}</span>
+                    </span>
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/15 text-white backdrop-blur transition group-hover:bg-accent">
+                      <ArrowRight className="h-4 w-4" />
+                    </span>
+                  </span>
                 </Link>
               );
             })}
@@ -267,16 +283,20 @@ export default async function Home() {
           <SectionHead title="From the" accent="Workshop" href="/blog" linkLabel="All Articles" />
           <div className="grid gap-4 md:grid-cols-3">
             {posts.slice(0, 3).map((post) => {
-              const Icon = ICONS[post.icon];
               const d = new Date(post.date);
               const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
               return (
-                <article key={post.slug} className="overflow-hidden rounded border border-slate-200 bg-white">
-                  <div className="relative flex h-[150px] items-center justify-center bg-[linear-gradient(120deg,#1b1b1d,#3a3a3e)]">
+                <article key={post.slug} className="group overflow-hidden rounded border border-slate-200 bg-white">
+                  <div className="relative h-[170px] overflow-hidden bg-ink">
+                    <img
+                      src={POST_IMAGES[post.slug] ?? "/images/blog/blog-cordless.jpg"}
+                      alt=""
+                      loading="lazy"
+                      className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                    />
                     <span className="absolute left-3 top-3 rounded bg-accent px-2.5 py-1.5 text-[11px] font-extrabold uppercase text-white">
                       {label}
                     </span>
-                    <Icon className="h-16 w-16 text-accent/60" strokeWidth={1.2} />
                   </div>
                   <div className="p-4 pb-5 md:px-[18px]">
                     <h4 className="mb-2 font-display text-base font-extrabold leading-snug text-ink">{post.title}</h4>
@@ -294,6 +314,13 @@ export default async function Home() {
     </>
   );
 }
+
+/** Blog header photography, keyed by post slug. */
+const POST_IMAGES: Record<string, string> = {
+  "choosing-your-first-cordless-platform": "/images/blog/blog-cordless.jpg",
+  "workshop-storage-that-actually-works": "/images/blog/blog-storage.jpg",
+  "blade-basics-for-cleaner-cuts": "/images/blog/blog-blades.jpg",
+};
 
 /** Hammer icon (not in lucide set used elsewhere on this page). */
 function HammerIcon({ className }: { className?: string }) {
