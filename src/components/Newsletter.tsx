@@ -50,18 +50,18 @@ export default function Newsletter({ tone = "light", variant = "default" }: { to
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Your email address"
             aria-label="Email address"
-            className="h-[46px] min-w-0 flex-1 rounded-l border border-[#333338] border-r-0 bg-[#101012] px-4 text-sm text-white outline-none placeholder:text-[#77787e] focus:border-accent"
+            className="h-[44px] min-w-0 flex-1 rounded-l-full border-2 border-r-0 border-accent bg-white px-5 text-sm text-ink outline-none placeholder:text-[#999]"
           />
           <button
             type="submit"
             disabled={state === "busy"}
-            className="h-[46px] shrink-0 rounded-r bg-accent px-7 font-display text-[13px] font-extrabold uppercase tracking-wider text-white hover:bg-[#c97a00]"
+            className="h-[44px] shrink-0 rounded-r-full bg-gradient-to-r from-accent-bright to-accent px-7 text-sm font-bold text-white hover:brightness-95"
           >
             {state === "busy" ? "Sending…" : "Sign Up"}
           </button>
         </div>
         {msg && (
-          <p role="status" className={`mt-2 text-sm ${state === "error" ? "text-red-300" : "text-emerald-300"}`}>
+          <p role="status" className={`mt-2 text-sm ${state === "error" ? "text-sale" : "text-emerald-700"}`}>
             {msg}
           </p>
         )}

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import ProductCard from "@/components/ProductCard";
 import { getBrands, getCategories, getProducts, getSellers, minPrice } from "@/lib/catalog";
-import { SELF_SELLER, VOLTAGES } from "@/lib/marketplace";
+import { SELF_SELLER, FITS } from "@/lib/marketplace";
 import { FILTER_KEYS, filterProducts, parseFilters, PRICE_BUCKETS, type Filters } from "@/lib/shopping";
 import type { Brand, Category, Product, Seller } from "@/lib/types";
 
@@ -153,9 +153,8 @@ function activeChips(f: Filters, ctx: { brands: Brand[]; sellers: Seller[]; sub?
   if (f.q) out.push({ label: `“${f.q}”`, clear: { q: null } });
   if (ctx.sub) out.push({ label: ctx.sub, clear: { sub: null } });
   if (f.brand) out.push({ label: ctx.brands.find((b) => b.slug === f.brand)?.name ?? f.brand, clear: { brand: null } });
-  for (const v of f.voltage)
-    out.push({ label: v, clear: { voltage: f.voltage.filter((x) => x !== v).join(",") || null } });
-  if (f.battery) out.push({ label: "Battery included", clear: { battery: null } });
+  for (const v of f.fit)
+    out.push({ label: v, clear: { fit: f.fit.filter((x) => x !== v).join(",") || null } });
   if (f.inStock) out.push({ label: "In stock", clear: { stock: null } });
   if (f.sale) out.push({ label: "On sale", clear: { sale: null } });
   if (f.clearance) out.push({ label: "Clearance", clear: { clearance: null } });
@@ -206,8 +205,8 @@ function FilterPanel({
   countWith: (patch: Partial<Filters>) => number;
   sort: string;
 }) {
-  const toggleVoltage = (v: string) => {
-    const set = new Set<string>(f.voltage);
+  const toggleFit = (v: string) => {
+    const set = new Set<string>(f.fit);
     if (set.has(v)) set.delete(v);
     else set.add(v);
     return [...set].join(",") || null;
@@ -238,20 +237,13 @@ function FilterPanel({
       </section>
 
       <section>
-        <H>Voltage</H>
+        <H>Fit</H>
         <ul className="space-y-1.5">
-          {VOLTAGES.map((v) => (
-            <Check key={v} on={f.voltage.includes(v)} href={href({ voltage: toggleVoltage(v) })} count={countWith({ voltage: [v] })}>
-              {v === "Manual" ? "No power (hand tools)" : v}
+          {FITS.map((v) => (
+            <Check key={v} on={f.fit.includes(v)} href={href({ fit: toggleFit(v) })} count={countWith({ fit: [v] })}>
+              {v}
             </Check>
           ))}
-        </ul>
-      </section>
-
-      <section>
-        <H>Battery</H>
-        <ul className="space-y-1.5">
-          <Check on={f.battery} href={href({ battery: f.battery ? null : "1" })} count={countWith({ battery: true })}>Battery included</Check>
         </ul>
       </section>
 
@@ -325,8 +317,7 @@ function hiddenValue(f: Filters, k: string): string {
     case "sub": return f.sub;
     case "sale": return f.sale ? "1" : "";
     case "clearance": return f.clearance ? "1" : "";
-    case "voltage": return f.voltage.join(",");
-    case "battery": return f.battery ? "1" : "";
+    case "fit": return f.fit.join(",");
     case "stock": return f.inStock ? "in" : "";
     case "seller": return f.seller;
     default: return "";

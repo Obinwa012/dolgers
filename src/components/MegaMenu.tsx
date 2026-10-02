@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useShop } from "@/context/ShopProvider";
 import { money, onSale } from "@/lib/catalog";
 import type { Category, Product } from "@/lib/types";
-import ToolArt from "./ToolArt";
+import ClothingArt from "./ClothingArt";
 
 const saving = (p: Product) =>
   Math.max(0, ...p.variants.map((v) => (v.compareAtPrice && v.compareAtPrice > v.price ? v.compareAtPrice - v.price : 0)));
@@ -62,11 +62,11 @@ export default function MegaMenu({ categories, onNavigate }: { categories: Categ
             <Link href={`/products/${deal.slug}`} onClick={onNavigate} className="group block p-5">
               <p className="font-display text-xs font-bold uppercase tracking-[0.2em] text-accent">Top deal</p>
               <span className="mt-3 block aspect-[4/3] overflow-hidden rounded">
-                <ToolArt icon={deal.icon} tint={deal.tint} image={deal.image} alt={deal.title} variant="bold" className="transition duration-300 group-hover:scale-105" />
+                <ClothingArt icon={deal.icon} tint={deal.tint} image={deal.image} alt={deal.title} variant="bold" className="transition duration-300 group-hover:scale-105" />
               </span>
               <p className="mt-3 line-clamp-2 text-sm font-medium">{deal.title}</p>
               <p className="mt-1.5 font-display text-xl font-extrabold text-accent">Save {money(saving(deal))}</p>
-              <span className="mt-3 inline-block rounded bg-accent px-4 py-2 text-xs font-extrabold uppercase tracking-wider text-white transition group-hover:bg-[#c97a00]">
+              <span className="mt-3 inline-block rounded bg-accent px-4 py-2 text-xs font-extrabold uppercase tracking-wider text-white transition group-hover:bg-accent-dark">
                 Shop the deal
               </span>
             </Link>

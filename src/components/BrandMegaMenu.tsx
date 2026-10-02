@@ -34,7 +34,7 @@ export default function BrandMegaMenu({ brands, onNavigate }: { brands: Brand[];
           ))}
         </ul>
         <p className="mt-5 text-sm text-slate-500">
-          Every brand on Dolgers is an authorized seller shipping from US warehouses.
+          Every brand on Dolgers ships from a US warehouse and is covered by our 30-day returns.
         </p>
       </div>
     </div>

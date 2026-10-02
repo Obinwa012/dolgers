@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { money } from "@/lib/catalog";
-import { VOLTAGES } from "@/lib/marketplace";
+import { FITS } from "@/lib/marketplace";
 import type { Brand, Category, Product } from "@/lib/types";
 
 /** Seller listings: edit price/stock/visibility inline, or add a new listing. */
@@ -109,11 +109,11 @@ function ListingRow({ user, product, onSaved }: { user: User; product: Product; 
   );
 }
 
-type OptRow = { name: string; price: string; compareAtPrice: string; batteryIncluded: boolean };
+type OptRow = { name: string; price: string; compareAtPrice: string };
 
 function NewListing({ user, categories, brands, onDone }: { user: User; categories: Category[]; brands: Brand[]; onDone: () => void }) {
   const [category, setCategory] = useState(categories[0]?.slug ?? "");
-  const [opts, setOpts] = useState<OptRow[]>([{ name: "Standard", price: "", compareAtPrice: "", batteryIncluded: false }]);
+  const [opts, setOpts] = useState<OptRow[]>([{ name: "Standard", price: "", compareAtPrice: "" }]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const cat = categories.find((c) => c.slug === category);
@@ -132,10 +132,10 @@ function NewListing({ user, categories, brands, onDone }: { user: User; categori
         category,
         subcategory: get("subcategory") || undefined,
         brand: get("brand"),
-        voltage: get("voltage") || undefined,
+        fit: get("fit") || undefined,
         specs: get("specs").split("\n"),
         stock: Number(get("stock")),
-        variants: opts.map((o) => ({ name: o.name, price: Number(o.price), compareAtPrice: o.compareAtPrice ? Number(o.compareAtPrice) : undefined, batteryIncluded: o.batteryIncluded })),
+        variants: opts.map((o) => ({ name: o.name, price: Number(o.price), compareAtPrice: o.compareAtPrice ? Number(o.compareAtPrice) : undefined })),
       });
       onDone();
     } catch (err) {
@@ -155,10 +155,10 @@ function NewListing({ user, categories, brands, onDone }: { user: User; categori
           {brands.map((b) => <option key={b.slug} value={b.slug}>{b.name}</option>)}
         </select>
       </label>
-      <label className={L}>Voltage
-        <select name="voltage" className="input mt-1" defaultValue="">
+      <label className={L}>Fit
+        <select name="fit" className="input mt-1" defaultValue="">
           <option value="">Not applicable</option>
-          {VOLTAGES.map((v) => <option key={v} value={v}>{v}</option>)}
+          {FITS.map((v) => <option key={v} value={v}>{v}</option>)}
         </select>
       </label>
       <label className={L}>Category
@@ -174,7 +174,7 @@ function NewListing({ user, categories, brands, onDone }: { user: User; categori
       </label>
       <label className={`${L} sm:col-span-2`}>Description<textarea name="description" required minLength={20} maxLength={2000} rows={3} className="input mt-1" /></label>
       <label className={`${L} sm:col-span-2`}>Key specs <span className="font-normal text-muted">(one per line; use “Label: value” for the spec table)</span>
-        <textarea name="specs" rows={4} className="input mt-1" placeholder={"18V brushless\nMax torque: 60 Nm"} />
+        <textarea name="specs" rows={4} className="input mt-1" placeholder={"Fabric: 100% linen\nLength: 112 cm"} />
       </label>
       <fieldset className="sm:col-span-2">
         <legend className="text-sm font-semibold">Options</legend>
@@ -183,10 +183,9 @@ function NewListing({ user, categories, brands, onDone }: { user: User; categori
             const set = (patch: Partial<OptRow>) => setOpts((os) => os.map((x, j) => (j === i ? { ...x, ...patch } : x)));
             return (
               <li key={i} className="flex flex-wrap items-center gap-2 text-sm">
-                <input aria-label="Option name" required value={o.name} onChange={(e) => set({ name: e.target.value })} placeholder="e.g. Tool only" className="input w-40! px-2! py-1.5!" />
+                <input aria-label="Option name" required value={o.name} onChange={(e) => set({ name: e.target.value })} placeholder="e.g. Black" className="input w-40! px-2! py-1.5!" />
                 <input aria-label="Price" required type="number" min={1} step="0.01" value={o.price} onChange={(e) => set({ price: e.target.value })} placeholder="Price $" className="input w-28! px-2! py-1.5!" />
                 <input aria-label="Was price" type="number" min={1} step="0.01" value={o.compareAtPrice} onChange={(e) => set({ compareAtPrice: e.target.value })} placeholder="Was $" className="input w-28! px-2! py-1.5!" />
-                <label className="flex items-center gap-1.5"><input type="checkbox" checked={o.batteryIncluded} onChange={(e) => set({ batteryIncluded: e.target.checked })} className="accent-brand-700" /> Battery included</label>
                 {opts.length > 1 && (
                   <button type="button" onClick={() => setOpts((os) => os.filter((_, j) => j !== i))} aria-label="Remove option" className="text-muted hover:text-sale"><Trash2 className="h-4 w-4" /></button>
                 )}
@@ -195,7 +194,7 @@ function NewListing({ user, categories, brands, onDone }: { user: User; categori
           })}
         </ul>
         {opts.length < 6 && (
-          <button type="button" onClick={() => setOpts((os) => [...os, { name: "", price: "", compareAtPrice: "", batteryIncluded: false }])} className="mt-2 text-sm font-semibold text-brand-700">+ Add option</button>
+          <button type="button" onClick={() => setOpts((os) => [...os, { name: "", price: "", compareAtPrice: "" }])} className="mt-2 text-sm font-semibold text-brand-700">+ Add option</button>
         )}
       </fieldset>
       <label className={L}>Stock (units)<input name="stock" type="number" required min={0} step={1} defaultValue={0} className="input mt-1" /></label>

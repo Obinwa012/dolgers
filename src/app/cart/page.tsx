@@ -3,7 +3,7 @@
 import { Trash2 } from "lucide-react";
 import Link from "next/link";
 import { Qty } from "@/components/CartDrawer";
-import ToolArt from "@/components/ToolArt";
+import ClothingArt from "@/components/ClothingArt";
 import { useShop } from "@/context/ShopProvider";
 import { money } from "@/lib/catalog";
 import { BUNDLES, FREE_SHIPPING_CENTS, quote, toCents } from "@/lib/pricing";
@@ -26,7 +26,7 @@ export default function CartPage() {
             {lines.map((l) => (
               <li key={`${l.productId}-${l.variantId}`} className="flex gap-5 py-5">
                 <Link href={`/products/${l.product.slug}`} className="h-28 w-28 shrink-0 overflow-hidden rounded border">
-                  <ToolArt icon={l.product.icon} tint={l.product.tint} image={l.product.image} alt="" />
+                  <ClothingArt icon={l.product.icon} tint={l.product.tint} image={l.product.image} alt="" />
                 </Link>
                 <div className="flex flex-1 flex-col gap-1">
                   <Link href={`/products/${l.product.slug}`} className="font-display text-lg hover:text-brand-600">{l.product.title}</Link>

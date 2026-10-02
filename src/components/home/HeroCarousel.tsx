@@ -3,7 +3,7 @@
 import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { ICONS } from "@/components/ToolArt";
+import { GarmentIcon } from "@/components/ClothingArt";
 import type { IconKey } from "@/lib/types";
 
 export interface HeroSlide {
@@ -11,17 +11,16 @@ export interface HeroSlide {
   eyebrow: string;
   title: string;
   text: string;
-  /** Big price/savings callout, e.g. "$499" or "Save $200". */
+  /** Big price callout, e.g. "$49". */
   callout?: string;
   calloutNote?: string;
   cta: string;
   href: string;
   icon: IconKey;
   bg: string; // CSS background
-  accent: string; // hex
 }
 
-const INTERVAL = 6000;
+const INTERVAL = 5000;
 const REDUCED = "(prefers-reduced-motion: reduce)";
 function subscribeReducedMotion(cb: () => void) {
   const mq = matchMedia(REDUCED);
@@ -30,10 +29,10 @@ function subscribeReducedMotion(cb: () => void) {
 }
 
 /**
- * Rotating hero. Auto-advances every 6s, pauses on hover/focus and with the pause button
+ * Rotating promo banner. Auto-advances every 5s, pauses on hover/focus and with the pause button
  * (WCAG 2.2.2), and doesn't auto-advance at all for prefers-reduced-motion.
  */
-export default function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
+export default function HeroCarousel({ slides, className = "" }: { slides: HeroSlide[]; className?: string }) {
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false); // user pressed pause
   const [hovering, setHovering] = useState(false);
@@ -53,16 +52,15 @@ export default function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
     <section
       aria-roledescription="carousel"
       aria-label="Featured promotions"
-      className="relative overflow-hidden bg-ink text-white"
+      className={`relative overflow-hidden rounded-xl text-white ${className}`}
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}
       onFocus={() => setHovering(true)}
       onBlur={(e) => !e.currentTarget.contains(e.relatedTarget) && setHovering(false)}
     >
-      {/* All slides share one grid cell, so the hero is as tall as its tallest slide (nothing clips). */}
-      <div className="grid">
+      {/* All slides share one grid cell, so the banner is as tall as its tallest slide. */}
+      <div className="grid h-full">
         {slides.map((s, k) => {
-          const Icon = ICONS[s.icon];
           const active = k === i;
           return (
             <div
@@ -74,42 +72,23 @@ export default function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
               className={`relative overflow-hidden transition-opacity duration-700 [grid-area:1/1] motion-reduce:transition-none ${active ? "z-[1] opacity-100" : "pointer-events-none opacity-0"}`}
               style={{ background: s.bg }}
             >
-              <Icon
-                aria-hidden
-                strokeWidth={0.7}
-                className="absolute right-10 top-1/2 hidden h-[300px] w-[300px] -translate-y-1/2 opacity-95 md:block"
-                style={{ color: s.accent }}
-              />
-              {/* hazard stripe wash */}
-              <div
-                aria-hidden
-                className="absolute inset-y-0 right-0 w-[34%] opacity-[0.14]"
-                style={{ background: `repeating-linear-gradient(-45deg, ${s.accent} 0 18px, transparent 18px 36px)` }}
-              />
-              <div className="container-x relative flex min-h-[380px] flex-col justify-center py-[50px]">
-                <div className="max-w-[560px]">
-                  <p
-                    className="inline-block rounded px-3.5 py-1.5 font-display text-xs font-extrabold uppercase tracking-[2px] text-white"
-                    style={{ background: s.accent }}
-                  >
-                    {s.eyebrow}
-                  </p>
-                  <h2 className="mt-4 font-display text-5xl font-black uppercase leading-[1.02] tracking-wide md:text-[56px]">{s.title}</h2>
-                  <p className="mt-3.5 max-w-[440px] text-base text-white/70">{s.text}</p>
+              <div aria-hidden className="absolute -right-16 top-1/2 hidden h-[420px] w-[420px] -translate-y-1/2 rounded-full bg-white/10 md:block" />
+              <div aria-hidden className="absolute right-24 top-1/2 hidden h-[260px] w-[260px] -translate-y-1/2 rounded-full bg-white/10 md:block" />
+              <GarmentIcon icon={s.icon} className="absolute right-12 top-1/2 hidden h-[300px] w-[300px] -translate-y-1/2 rotate-[8deg] text-white/90 drop-shadow-[0_14px_20px_rgba(0,0,0,0.25)] md:block" />
+              <div className="relative flex h-full min-h-[300px] flex-col justify-center px-7 py-9 md:px-12 lg:min-h-[380px]">
+                <div className="max-w-[420px]">
+                  <p className="inline-block rounded-full bg-white/20 px-3.5 py-1 text-xs font-bold tracking-wide">{s.eyebrow}</p>
+                  <h2 className="mt-3.5 text-[32px] font-black leading-[1.1] md:text-[40px]">{s.title}</h2>
+                  <p className="mt-3 max-w-[360px] text-[15px] font-medium text-white/95">{s.text}</p>
                   {s.callout && (
-                    <p className="mt-5 flex items-baseline gap-3">
-                      <span className="font-display text-4xl font-black md:text-5xl" style={{ color: s.accent }}>{s.callout}</span>
-                      {s.calloutNote && <span className="text-sm text-white/80 md:text-base">{s.calloutNote}</span>}
+                    <p className="mt-4 flex items-baseline gap-2.5">
+                      <span className="text-4xl font-black">{s.callout}</span>
+                      {s.calloutNote && <span className="text-sm font-medium text-white/90">{s.calloutNote}</span>}
                     </p>
                   )}
-                  <p className="mt-6 flex flex-wrap gap-3">
-                    <Link href={s.href} className="rounded px-10 py-[15px] font-display text-[15px] font-extrabold uppercase tracking-wider text-white hover:brightness-110" style={{ background: s.accent }}>
-                      {s.cta}
-                    </Link>
-                    <Link href="/sell" className="rounded border-2 border-white/25 px-8 py-[13px] font-display text-[15px] font-extrabold uppercase tracking-wider text-white hover:border-accent hover:text-accent">
-                      Become a Seller
-                    </Link>
-                  </p>
+                  <Link href={s.href} className="mt-6 inline-block rounded-full bg-white px-9 py-3 text-[15px] font-bold text-accent shadow-lg transition hover:bg-brand-50">
+                    {s.cta} &rarr;
+                  </Link>
                 </div>
               </div>
             </div>
@@ -118,34 +97,34 @@ export default function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
       </div>
 
       {n > 1 && (
-        <div className="container-x absolute inset-x-0 bottom-6 z-[2] flex items-center gap-3">
-          <button onClick={() => go(i - 1)} aria-label="Previous promotion" className="grid h-9 w-9 place-items-center rounded-full bg-white/15 hover:bg-white/30">
+        <>
+          <button onClick={() => go(i - 1)} aria-label="Previous promotion" className="absolute left-3 top-1/2 z-[2] hidden sm:grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-black/25 hover:bg-black/45">
             <ChevronLeft className="h-5 w-5" />
           </button>
-          <div className="flex gap-2">
+          <button onClick={() => go(i + 1)} aria-label="Next promotion" className="absolute right-3 top-1/2 z-[2] hidden sm:grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-black/25 hover:bg-black/45">
+            <ChevronRight className="h-5 w-5" />
+          </button>
+          <div className="absolute inset-x-0 bottom-3.5 z-[2] flex items-center justify-center gap-2">
             {slides.map((s, k) => (
               <button
                 key={s.id}
                 onClick={() => go(k)}
                 aria-label={`Show promotion ${k + 1}: ${s.title}`}
                 aria-current={k === i}
-                className={`h-2.5 rounded-full transition-all ${k === i ? "w-8 bg-white" : "w-2.5 bg-white/40 hover:bg-white/70"}`}
+                className={`h-2 rounded-full transition-all ${k === i ? "w-6 bg-white" : "w-2 bg-white/50 hover:bg-white/80"}`}
               />
             ))}
+            {!reduced && (
+              <button
+                onClick={() => setPaused((p) => !p)}
+                aria-label={playing ? "Pause rotation" : "Resume rotation"}
+                className="ml-2 grid h-6 w-6 place-items-center rounded-full bg-black/25 hover:bg-black/45"
+              >
+                {playing ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+              </button>
+            )}
           </div>
-          <button onClick={() => go(i + 1)} aria-label="Next promotion" className="grid h-9 w-9 place-items-center rounded-full bg-white/15 hover:bg-white/30">
-            <ChevronRight className="h-5 w-5" />
-          </button>
-          {!reduced && (
-            <button
-              onClick={() => setPaused((p) => !p)}
-              aria-label={playing ? "Pause rotation" : "Resume rotation"}
-              className="ml-1 grid h-9 w-9 place-items-center rounded-full bg-white/15 hover:bg-white/30"
-            >
-              {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-            </button>
-          )}
-        </div>
+        </>
       )}
     </section>
   );

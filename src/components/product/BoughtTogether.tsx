@@ -3,7 +3,7 @@
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import ToolArt from "@/components/ToolArt";
+import ClothingArt from "@/components/ClothingArt";
 import { useShop } from "@/context/ShopProvider";
 import { money } from "@/lib/catalog";
 import { quote, toCents } from "@/lib/pricing";
@@ -26,7 +26,7 @@ export default function BoughtTogether({ product, others }: { product: Product; 
           <div key={p.id} className="flex items-center gap-2">
             {i > 0 && <Plus aria-hidden className="h-5 w-5 text-muted" />}
             <Link href={`/products/${p.slug}`} className={`block h-24 w-24 overflow-hidden rounded-lg border transition ${picked.has(p.id) ? "" : "opacity-40"}`}>
-              <ToolArt icon={p.icon} tint={p.tint} image={p.image} alt={p.title} />
+              <ClothingArt icon={p.icon} tint={p.tint} image={p.image} alt={p.title} />
             </Link>
           </div>
         ))}

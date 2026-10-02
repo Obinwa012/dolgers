@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import { useShop } from "@/context/ShopProvider";
 import { money } from "@/lib/catalog";
 import { FREE_SHIPPING } from "@/lib/pricing";
-import ToolArt from "./ToolArt";
+import ClothingArt from "./ClothingArt";
 
 export default function CartDrawer() {
   const { drawerOpen, setDrawerOpen, lines, subtotal, setQty } = useShop();
@@ -66,7 +66,7 @@ export default function CartDrawer() {
               {lines.map((l) => (
                 <li key={`${l.productId}-${l.variantId}`} className="flex gap-4 p-5">
                   <div className="h-20 w-20 shrink-0 overflow-hidden rounded border">
-                    <ToolArt icon={l.product.icon} tint={l.product.tint} image={l.product.image} alt="" />
+                    <ClothingArt icon={l.product.icon} tint={l.product.tint} image={l.product.image} alt="" />
                   </div>
                   <div className="flex-1 text-sm">
                     <Link

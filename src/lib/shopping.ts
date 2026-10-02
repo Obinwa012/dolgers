@@ -1,6 +1,6 @@
 // Storefront helpers: collection filters, delivery estimates, financing and product-page data.
 // Import-free (apart from types) so it can be unit-tested with plain `node`.
-import type { Product, Seller, SpecRow, Voltage } from "./types.ts";
+import type { Product, Seller, SpecRow, Fit } from "./types.ts";
 
 const SELF = "dolgers"; // mirrors SELF_SELLER in marketplace.ts (kept import-free)
 const sellerSlug = (p: Product) => p.seller || SELF;
@@ -17,8 +17,7 @@ export interface Filters {
   sub: string;
   sale: boolean;
   clearance: boolean;
-  voltage: Voltage[];
-  battery: boolean;
+  fit: Fit[];
   inStock: boolean;
   /** "dolgers", "marketplace", or one seller's slug. */
   seller: string;
@@ -26,7 +25,7 @@ export interface Filters {
   max: number | null;
 }
 
-export const FILTER_KEYS = ["q", "brand", "sub", "sale", "clearance", "voltage", "battery", "stock", "seller", "min", "max"] as const;
+export const FILTER_KEYS = ["q", "brand", "sub", "sale", "clearance", "fit", "stock", "seller", "min", "max"] as const;
 
 const num = (s: string) => {
   const n = Number(s);
@@ -35,15 +34,14 @@ const num = (s: string) => {
 
 /** Parse URL search params (as plain strings) into filters. Unknown values are dropped. */
 export function parseFilters(get: (k: string) => string): Filters {
-  const voltages: Voltage[] = ["12V", "18V", "36V", "Corded", "Manual"];
+  const fits: Fit[] = ["Petite", "Regular", "Tall", "Plus"];
   return {
     q: get("q").trim(),
     brand: get("brand"),
     sub: get("sub"),
     sale: get("sale") === "1",
     clearance: get("clearance") === "1",
-    voltage: get("voltage").split(",").filter((v): v is Voltage => (voltages as string[]).includes(v)),
-    battery: get("battery") === "1",
+    fit: get("fit").split(",").filter((v): v is Fit => (fits as string[]).includes(v)),
     inStock: get("stock") === "in",
     seller: get("seller"),
     min: num(get("min")),
@@ -60,8 +58,7 @@ export function filterProducts(list: Product[], f: Filters): Product[] {
     if (f.sub && p.subcategory !== f.sub) return false;
     if (f.sale && !p.variants.some((v) => v.compareAtPrice && v.compareAtPrice > v.price)) return false;
     if (f.clearance && !p.tags.includes("clearance")) return false;
-    if (f.voltage.length && !(p.voltage && f.voltage.includes(p.voltage))) return false;
-    if (f.battery && !p.variants.some((v) => v.batteryIncluded)) return false;
+    if (f.fit.length && !(p.fit && f.fit.includes(p.fit))) return false;
     if (f.inStock && p.stock <= 0) return false;
     if (f.seller === "dolgers" && sellerSlug(p) !== SELF) return false;
     else if (f.seller === "marketplace" && sellerSlug(p) === SELF) return false;
@@ -76,10 +73,10 @@ export function filterProducts(list: Product[], f: Filters): Product[] {
 }
 
 export const PRICE_BUCKETS: { label: string; min: number | null; max: number | null }[] = [
-  { label: "Under $50", min: null, max: 50 },
-  { label: "$50 – $150", min: 50, max: 150 },
-  { label: "$150 – $300", min: 150, max: 300 },
-  { label: "$300 & up", min: 300, max: null },
+  { label: "Under $40", min: null, max: 40 },
+  { label: "$40 – $80", min: 40, max: 80 },
+  { label: "$80 – $150", min: 80, max: 150 },
+  { label: "$150 & up", min: 150, max: null },
 ];
 
 // ---------------------------------------------------------------------------------------------
@@ -147,9 +144,8 @@ export function fullSpecs(p: Product, names: { brand?: string; category?: string
     { label: "Model / SKU", value: p.slug.toUpperCase() },
   ];
   if (names.category) rows.push({ label: "Category", value: names.category });
-  if (p.voltage) rows.push({ label: "Power source", value: p.voltage === "Manual" ? "None (hand tool)" : p.voltage === "Corded" ? "Corded (mains)" : `${p.voltage} battery platform` });
-  if (p.variants.length > 1 || p.variants[0]?.batteryIncluded !== undefined)
-    rows.push({ label: "Battery included", value: p.variants.map((v) => `${v.name}: ${v.batteryIncluded ? "Yes" : "No"}`).join(" · ") });
+  if (p.fit) rows.push({ label: "Fit", value: `${p.fit} sizing` });
+  if (p.variants.length > 1) rows.push({ label: "Colours", value: p.variants.map((v) => v.name).join(" · ") });
   if (p.specTable?.length) rows.push(...p.specTable);
   else
     for (const s of p.specs) {
@@ -161,8 +157,8 @@ export function fullSpecs(p: Product, names: { brand?: string; category?: string
 }
 
 /**
- * "Frequently bought together": the listing's own picks, else batteries/chargers and accessories on
- * the same platform. In-stock, active items only; at most `limit`.
+ * "Complete the look": the listing's own picks, else the best-rated in-stock pieces from other
+ * categories (a top with trousers, a dress with a coat). Active items only; at most `limit`.
  */
 export function boughtTogether(p: Product, all: Product[], limit = 2): Product[] {
   const byId = new Map(all.map((x) => [x.id, x]));
@@ -171,7 +167,7 @@ export function boughtTogether(p: Product, all: Product[], limit = 2): Product[]
   if (picked.length < limit) {
     const extra = all
       .filter((x) => ok(x) && !picked.includes(x))
-      .filter((x) => (x.category === "power-supplies" && p.voltage && x.voltage === p.voltage) || x.category === "accessories")
+      .filter((x) => x.category !== p.category)
       .sort((a, b) => b.rating - a.rating);
     picked.push(...extra);
   }
@@ -181,7 +177,7 @@ export function boughtTogether(p: Product, all: Product[], limit = 2): Product[]
 /** Up to `limit` close alternatives for a comparison table: same subcategory first, then category. */
 export function compareSet(p: Product, all: Product[], limit = 3): Product[] {
   const pool = all.filter((x) => x.id !== p.id && isActive(x) && x.category === p.category);
-  const score = (x: Product) => (x.subcategory && x.subcategory === p.subcategory ? 2 : 0) + (x.voltage === p.voltage ? 1 : 0);
+  const score = (x: Product) => (x.subcategory && x.subcategory === p.subcategory ? 2 : 0) + (x.fit === p.fit ? 1 : 0);
   return pool.sort((a, b) => score(b) - score(a) || Math.abs(lowest(a) - lowest(p)) - Math.abs(lowest(b) - lowest(p))).slice(0, limit);
 }
 
@@ -195,7 +191,24 @@ export function policyLines(s: Pick<Seller, "name" | "slug" | "returns" | "retur
         : `${s.returnDays}-day returns handled by ${s.name}. Dolgers steps in if a return isn't resolved.`,
     warranty:
       s.warranty === "manufacturer"
-        ? "Warranty claims go to the manufacturer; we'll help you file one."
-        : `Warranty service is provided by ${s.name}.`,
+        ? "Faulty or misdescribed items are covered by the brand; we'll help you make a claim."
+        : `Quality claims are handled by ${s.name}.`,
   };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Card helpers
+
+/** "18k+ paid" style sales figure for product cards. */
+export function soldLabel(p: Pick<Product, "sold" | "reviewCount">): string {
+  const n = p.sold ?? p.reviewCount * 38;
+  if (n >= 10_000) return `${Math.floor(n / 1000)}k+ sold`;
+  if (n >= 1_000) return `${Math.floor(n / 100) / 10}k+ sold`;
+  return `${Math.max(1, Math.floor(n / 10) * 10)}+ sold`;
+}
+
+/** Whole dollars and the cents part ("" when .00), for Taobao-style price display. */
+export function splitPrice(n: number): { whole: string; cents: string } {
+  const c = Math.round(n * 100) % 100;
+  return { whole: String(Math.floor(Math.round(n * 100) / 100)), cents: c ? `.${String(c).padStart(2, "0")}` : "" };
 }
