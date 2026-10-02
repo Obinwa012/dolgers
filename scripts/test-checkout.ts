@@ -13,39 +13,39 @@ const build = (body: unknown, extra: Partial<typeof base> = {}) =>
 
 test("prices come from the catalog, never the request", () => {
   const o = build({
-    items: [{ productId: "brunn-bn18-brad-nailer", variantId: "std", qty: 2, price: 0.01 }],
+    items: [{ productId: "lunette-little-black-dress", variantId: "black", qty: 2, price: 0.01 }],
     address,
     total: 0,
   });
-  assert.equal(o.subtotal, 298);
-  assert.equal(o.items[0].price, 149);
+  assert.equal(o.subtotal, 170);
+  assert.equal(o.items[0].price, 85);
   assert.equal(o.shipping, 0); // over $99
-  assert.equal(o.totalCents, 29_800);
+  assert.equal(o.totalCents, 17_000);
   assert.equal(o.status, "pending_payment");
 });
 
 test("shipping applies under the free threshold (after discount)", () => {
-  const hammer = build({ items: [{ productId: "axelwood-claw-hammer-20oz", variantId: "std", qty: 1 }], address });
-  assert.equal(hammer.totalCents, 3_900 + 1_200);
-  // $99 trimmer: exactly at threshold, free. With 5% off it drops below, so shipping returns.
-  const t = { items: [{ productId: "norrmark-gt40-grass-trimmer", variantId: "tool", qty: 1 }], address };
+  const shorts = build({ items: [{ productId: "sorella-linen-drawstring-shorts", variantId: "aqua", qty: 1 }], address });
+  assert.equal(shorts.totalCents, 3_400 + 1_200);
+  // Three pairs of shorts ($102) clear the threshold. With 5% off they drop below, so shipping returns.
+  const t = { items: [{ productId: "sorella-linen-drawstring-shorts", variantId: "aqua", qty: 3 }], address };
   assert.equal(build(t).shipping, 0);
-  const d = build({ ...t, code: "firstbuild" });
-  assert.equal(d.discountCode, "FIRSTBUILD");
-  assert.equal(d.discount, 4.95);
+  const d = build({ ...t, code: "firstlook" });
+  assert.equal(d.discountCode, "FIRSTLOOK");
+  assert.equal(d.discount, 5.1);
   assert.equal(d.shipping, 12);
-  assert.equal(d.totalCents, 9_900 - 495 + 1_200);
+  assert.equal(d.totalCents, 10_200 - 510 + 1_200);
 });
 
 test("first-order code is refused for repeat customers", () => {
-  const body = { items: [{ productId: "brunn-bn18-brad-nailer", variantId: "std", qty: 1 }], address, code: "FIRSTBUILD" };
+  const body = { items: [{ productId: "lunette-little-black-dress", variantId: "black", qty: 1 }], address, code: "FIRSTLOOK" };
   assert.throws(() => build(body, { hasPaidOrder: true }), /first order/);
   assert.throws(() => build({ ...body, code: "FREE100" }), /isn't valid/);
 });
 
 test("unknown products/variants and stock limits are rejected", () => {
   assert.throws(() => build({ items: [{ productId: "nope", variantId: "std", qty: 1 }], address }), CheckoutError);
-  assert.throws(() => build({ items: [{ productId: "brunn-bn18-brad-nailer", variantId: "gold", qty: 1 }], address }), CheckoutError);
+  assert.throws(() => build({ items: [{ productId: "lunette-little-black-dress", variantId: "gold", qty: 1 }], address }), CheckoutError);
   const p = catalog.find((x) => x.variants.length > 1)!;
   // Two variants of one product both count against that product's stock.
   const half = Math.ceil((p.stock + 1) / 2);
@@ -71,7 +71,7 @@ test("quote() math is exact in cents", () => {
   assert.deepEqual(quote([]), {
     subtotalCents: 0, bundleCents: 0, discountCents: 0, shippingCents: 0, totalCents: 0, code: null, bundles: [],
   });
-  const q = quote([{ unitCents: 1_999, qty: 3 }], "FIRSTBUILD");
+  const q = quote([{ unitCents: 1_999, qty: 3 }], "FIRSTLOOK");
   assert.equal(q.subtotalCents, 5_997);
   assert.equal(q.discountCents, 300); // 299.85 rounds to 300
   assert.equal(q.totalCents, 5_997 - 300 + 1_200);
@@ -79,29 +79,34 @@ test("quote() math is exact in cents", () => {
 
 test("bundle offers: applied server-side, once per unit, before the code", () => {
   const line = (productId: string, variantId: string, qty = 1) => ({ productId, variantId, qty });
-  // Jigsaw (169) + twin pack (159) + charger (89) = 417 → 10% = 41.70.
-  const jig = build({
-    items: [line("voltra-js18-brushless-jigsaw", "tool"), line("voltra-5ah-battery-twin", "std"), line("brunn-dual-port-rapid-charger", "std")],
+  // Jeans (68) + tee 3-pack (36) + blazer (96) = 200 → 10% = 20.00.
+  const denim = build({
+    items: [line("nomi-high-waist-straight-jeans", "mid"), line("sorella-ribbed-cotton-tee-3pack", "neutrals"), line("marlowe-relaxed-linen-blazer", "slate")],
     address,
   });
-  // Power-up pair (twin + charger, 15% = 37.20) overlaps the jigsaw pack (41.70); the bigger one wins
-  // and each unit is only counted once.
-  assert.equal(jig.bundleDiscount, 41.7);
-  assert.equal(jig.totalCents, 41_700 - 4_170);
-  // Wrong variant (jigsaw kit) → no jigsaw bundle, but the power-up pair still applies.
-  const kit = build({
-    items: [line("voltra-js18-brushless-jigsaw", "kit"), line("voltra-5ah-battery-twin", "std"), line("brunn-dual-port-rapid-charger", "std")],
+  assert.equal(denim.bundleDiscount, 20);
+  assert.equal(denim.totalCents, 20_000 - 2_000);
+  // Dress and layer (dress 58 + blazer 96 = 154 → 10% = 15.40) overlaps the denim outfit on the
+  // blazer; the bigger saving wins and each unit is only counted once.
+  const both = build({
+    items: [line("nomi-high-waist-straight-jeans", "mid"), line("sorella-ribbed-cotton-tee-3pack", "neutrals"), line("marlowe-relaxed-linen-blazer", "slate"), line("aurelia-floral-wrap-midi-dress", "rose")],
     address,
   });
-  assert.equal(kit.bundleDiscount, 37.2);
-  // Two sets of the pair; code applies to the post-bundle subtotal.
-  const two = build({ items: [line("voltra-5ah-battery-twin", "std", 2), line("brunn-dual-port-rapid-charger", "std", 3)], address, code: "FIRSTBUILD" });
-  assert.equal(two.bundleDiscount, 74.4);
-  const sub = 2 * 15_900 + 3 * 8_900;
-  assert.equal(two.discount, Math.round((sub - 7_440) * 0.05) / 100);
-  assert.equal(two.totalCents, sub - 7_440 - Math.round((sub - 7_440) * 0.05));
+  assert.equal(both.bundleDiscount, 20);
+  // Wrong wash (dark jeans) → no denim outfit, but dress and layer still applies.
+  const layer = build({
+    items: [line("nomi-high-waist-straight-jeans", "dark"), line("marlowe-relaxed-linen-blazer", "slate"), line("aurelia-floral-wrap-midi-dress", "rose")],
+    address,
+  });
+  assert.equal(layer.bundleDiscount, 15.4);
+  // Two studio pairs from 2 leggings + 3 bras; the code applies to the post-bundle subtotal.
+  const two = build({ items: [line("velvet-high-rise-leggings", "black", 2), line("velvet-longline-sports-bra", "black", 3)], address, code: "FIRSTLOOK" });
+  assert.equal(two.bundleDiscount, 22.8);
+  const sub = 2 * 4_200 + 3 * 3_400;
+  assert.equal(two.discount, Math.round((sub - 2_280) * 0.05) / 100);
+  assert.equal(two.totalCents, sub - 2_280 - Math.round((sub - 2_280) * 0.05));
   // Bundle savings can pull an order under the free-shipping threshold.
-  const q = quote([{ unitCents: 5_000, qty: 1, productId: "voltra-5ah-battery-twin", variantId: "std" }, { unitCents: 5_000, qty: 1, productId: "brunn-dual-port-rapid-charger", variantId: "std" }]);
+  const q = quote([{ unitCents: 5_000, qty: 1, productId: "velvet-high-rise-leggings", variantId: "black" }, { unitCents: 5_000, qty: 1, productId: "velvet-longline-sports-bra", variantId: "black" }]);
   assert.equal(q.bundleCents, 1_500);
   assert.equal(q.shippingCents, 1_200);
 });

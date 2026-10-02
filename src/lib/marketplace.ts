@@ -1,7 +1,7 @@
 // Marketplace rules shared by the storefront, the seller dashboard and the server.
 // Money is in integer cents. Import-free (apart from types) so it can be unit-tested with plain `node`.
 import type {
-  ApplicationStatus, Category, Order, ReturnStatus, SellerApplication, SellerOrder, Variant, Voltage,
+  ApplicationStatus, Category, Order, ReturnStatus, SellerApplication, SellerOrder, Variant, Fit,
 } from "./types.ts";
 
 /** Dolgers's own seller slug (first-party stock). */
@@ -11,7 +11,7 @@ export const COMMISSION_RATE = 0.12;
 /** Extra days on top of a seller's return window to allow for delivery. */
 export const RETURN_TRANSIT_DAYS = 7;
 
-export const VOLTAGES: Voltage[] = ["12V", "18V", "36V", "Corded", "Manual"];
+export const FITS: Fit[] = ["Petite", "Regular", "Tall", "Plus"];
 
 export const sellerOf = (x: { seller?: string }) => x.seller || SELF_SELLER;
 export const isMarketplace = (x: { seller?: string }) => sellerOf(x) !== SELF_SELLER;
@@ -229,7 +229,7 @@ export interface ListingInput {
   category: string;
   subcategory?: string;
   brand: string;
-  voltage?: Voltage;
+  fit?: Fit;
   specs: string[];
   variants: Variant[];
   stock: number;
@@ -252,7 +252,7 @@ function validateVariants(raw: unknown): Variant[] {
     if (!(price >= 1 && price <= 50_000)) throw new MarketplaceError(`Price for "${name}" must be between $1 and $50,000.`);
     if (compare !== undefined && !(compare > price && compare <= 50_000))
       throw new MarketplaceError(`"Was" price for "${name}" must be higher than the price.`);
-    return { id, name, price, ...(compare !== undefined ? { compareAtPrice: compare } : {}), batteryIncluded: v.batteryIncluded === true };
+    return { id, name, price, ...(compare !== undefined ? { compareAtPrice: compare } : {}) };
   });
 }
 
@@ -269,15 +269,15 @@ export function validateListing(body: unknown, ctx: { categories: Category[]; br
   const category = ctx.categories.find((c) => c.slug === str(b.category, 60));
   const subcategory = str(b.subcategory, 60) || undefined;
   const brand = str(b.brand, 60);
-  const voltage = (str(b.voltage, 10) || undefined) as Voltage | undefined;
+  const fit = (str(b.fit, 10) || undefined) as Fit | undefined;
   const specs = Array.isArray(b.specs) ? b.specs.map((s) => str(s, 120)).filter(Boolean).slice(0, 12) : [];
   if (title.length < 10) throw new MarketplaceError("Title must be at least 10 characters.");
   if (description.length < 20) throw new MarketplaceError("Description must be at least 20 characters.");
   if (!category) throw new MarketplaceError("Choose a category.");
   if (subcategory && !category.subcategories?.some((s) => s.slug === subcategory)) throw new MarketplaceError("That subcategory isn't in the chosen category.");
   if (!ctx.brandSlugs.includes(brand)) throw new MarketplaceError("Choose a brand.");
-  if (voltage && !VOLTAGES.includes(voltage)) throw new MarketplaceError("Choose a valid voltage.");
-  return { title, description, category: category.slug, subcategory, brand, voltage, specs, variants: validateVariants(b.variants), stock: validateStock(b.stock) };
+  if (fit && !FITS.includes(fit)) throw new MarketplaceError("Choose a valid fit.");
+  return { title, description, category: category.slug, subcategory, brand, fit, specs, variants: validateVariants(b.variants), stock: validateStock(b.stock) };
 }
 
 /**
@@ -302,7 +302,6 @@ export function validateListingUpdate(body: unknown, existing: Variant[]): { var
     const n = variants.find((v) => v.id === e.id)!;
     const out: Variant = { id: e.id, name: e.name, price: n.price };
     if (n.compareAtPrice !== undefined) out.compareAtPrice = n.compareAtPrice;
-    if (e.batteryIncluded !== undefined) out.batteryIncluded = e.batteryIncluded;
     return out;
   });
   return { variants: merged, stock: validateStock(b.stock), listingStatus: status };

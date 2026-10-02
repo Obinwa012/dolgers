@@ -1,6 +1,6 @@
-# Dolgers: Tool Store (Next.js + Tailwind + Firebase)
+# Dolgers: Women's Fashion Store (Next.js + Tailwind + Firebase)
 
-A promotion-driven tool store with a third-party marketplace. Storefront: marquee announcement bar,
+A promotion-driven women's clothing store with a marketplace-style (Taobao-inspired) storefront and with a third-party marketplace. Storefront: marquee announcement bar,
 two-tier header with a mega menu, rotating hero carousel, deals by category, top deals, bundle offers,
 clearance, dense product grids (rating, price, delivery date or pickup and seller on every card),
 faceted filters, and deep product pages (full specs, Q&A, frequently bought together, comparison,

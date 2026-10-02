@@ -20,7 +20,7 @@ export default function SellPage() {
             <p className="font-display uppercase tracking-[0.2em] text-accent">Dolgers Marketplace</p>
             <h1 className="mt-3 font-display text-5xl uppercase leading-none md:text-6xl">Sell to the trades</h1>
             <p className="mt-4 max-w-md text-white/80">
-              List your tools and supplies next to ours. We run the storefront, the checkout and customer payments; you ship and get paid.
+              List your fashion label next to ours. We run the storefront, the checkout and customer payments; you ship and get paid.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Link href="/sell/apply" className="btn bg-accent px-7 text-ink hover:bg-white">Apply to sell</Link>

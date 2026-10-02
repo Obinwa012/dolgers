@@ -8,7 +8,7 @@ import AskQuestion from "@/components/product/AskQuestion";
 import BoughtTogether from "@/components/product/BoughtTogether";
 import BuyBox from "@/components/product/BuyBox";
 import Stars from "@/components/Stars";
-import ToolArt from "@/components/ToolArt";
+import ClothingArt from "@/components/ClothingArt";
 import { getBrands, getCategories, getProduct, getProducts, getSellers, minPrice, money } from "@/lib/catalog";
 import { SELF_SELLER, sellerOf } from "@/lib/marketplace";
 import { boughtTogether, compareSet, fullSpecs, policyLines } from "@/lib/shopping";
@@ -57,7 +57,7 @@ export default async function ProductPage(props: PageProps<"/products/[slug]">) 
       <div className="grid gap-10 lg:grid-cols-[1fr_1fr] xl:grid-cols-[1.1fr_1fr]">
         <div className="lg:sticky lg:top-40 lg:self-start">
           <div className="relative aspect-square overflow-hidden rounded-xl border">
-            <ToolArt icon={product.icon} tint={product.tint} image={product.image} alt={product.title} />
+            <ClothingArt icon={product.icon} tint={product.tint} image={product.image} alt={product.title} />
             {product.tags.includes("clearance") && (
               <span className="absolute left-4 top-4 rounded bg-ink px-2 py-1 text-xs font-bold uppercase text-accent">Clearance</span>
             )}
@@ -100,7 +100,7 @@ export default async function ProductPage(props: PageProps<"/products/[slug]">) 
 
           {fbt.length > 0 && (
             <section>
-              <h2 className="mb-4 font-display text-2xl uppercase">Frequently bought together</h2>
+              <h2 className="mb-4 font-display text-2xl uppercase">Complete the look</h2>
               <BoughtTogether product={product} others={fbt} />
             </section>
           )}
@@ -155,7 +155,7 @@ export default async function ProductPage(props: PageProps<"/products/[slug]">) 
                       {compare.map((p, i) => (
                         <th key={p.id} scope="col" className={`p-3 text-left font-normal ${i === 0 ? "bg-brand-50" : ""}`}>
                           <Link href={`/products/${p.slug}`} className="block">
-                            <span className="block aspect-square w-24 overflow-hidden rounded border"><ToolArt icon={p.icon} tint={p.tint} image={p.image} alt="" /></span>
+                            <span className="block aspect-square w-24 overflow-hidden rounded border"><ClothingArt icon={p.icon} tint={p.tint} image={p.image} alt="" /></span>
                             <span className="mt-2 line-clamp-2 font-medium hover:text-brand-700">{p.title}</span>
                           </Link>
                           {i === 0 && <span className="mt-1 inline-block text-xs font-semibold uppercase text-brand-700">This item</span>}
@@ -166,8 +166,7 @@ export default async function ProductPage(props: PageProps<"/products/[slug]">) 
                   <tbody className="divide-y">
                     <CompareRow label="Price" items={compare} cell={(p) => <b className="font-display text-base">{p.variants.length > 1 ? "From " : ""}{money(minPrice(p))}</b>} />
                     <CompareRow label="Rating" items={compare} cell={(p) => <Stars rating={p.rating} count={p.reviewCount} />} />
-                    <CompareRow label="Power" items={compare} cell={(p) => p.voltage ?? "—"} />
-                    <CompareRow label="Battery included" items={compare} cell={(p) => (p.variants.some((v) => v.batteryIncluded) ? (p.variants.every((v) => v.batteryIncluded) ? "Yes" : "Kit option") : "No")} />
+                    <CompareRow label="Fit" items={compare} cell={(p) => p.fit ?? "—"} />
                     <CompareRow label="Sold by" items={compare} cell={(p) => sellerName(p)} />
                     <CompareRow label="Availability" items={compare} cell={(p) => (p.stock > 0 ? "In stock" : "Out of stock")} />
                     <CompareRow label="Highlights" items={compare} cell={(p) => <ul className="list-disc space-y-0.5 pl-4">{p.specs.slice(0, 3).map((s) => <li key={s}>{s}</li>)}</ul>} />

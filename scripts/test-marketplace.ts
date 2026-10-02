@@ -36,21 +36,21 @@ test("orders record each line's seller; inactive listings can't be bought", () =
   const o = buildOrder({
     req: parseCheckoutRequest({
       items: [
-        { productId: "brunn-bn18-brad-nailer", variantId: "std", qty: 1 },
-        { productId: "ironhide-72t-ratchet-socket-set", variantId: "std", qty: 1 },
+        { productId: "marlowe-pleated-wide-leg-trousers", variantId: "charcoal", qty: 1 },
+        { productId: "willow-cashmere-blend-crewneck", variantId: "camel", qty: 1 },
       ],
       address,
     }),
     products: byId,
     uid: "u1", email: "a@b.co", hasPaidOrder: false, now: 1,
   });
-  assert.deepEqual(o.items.map((i) => i.seller), ["dolgers", "ridgeline-tool-supply"]);
-  assert.deepEqual(o.sellers, ["dolgers", "ridgeline-tool-supply"]);
+  assert.deepEqual(o.items.map((i) => i.seller), ["dolgers", "willow-and-thread"]);
+  assert.deepEqual(o.sellers, ["dolgers", "willow-and-thread"]);
 
   const inactive = new Map(byId);
-  inactive.set("brunn-bn18-brad-nailer", { ...byId.get("brunn-bn18-brad-nailer")!, listingStatus: "inactive" });
+  inactive.set("marlowe-pleated-wide-leg-trousers", { ...byId.get("marlowe-pleated-wide-leg-trousers")!, listingStatus: "inactive" });
   assert.throws(
-    () => buildOrder({ req: parseCheckoutRequest({ items: [{ productId: "brunn-bn18-brad-nailer", variantId: "std", qty: 1 }], address }), products: inactive, uid: "u", email: "", hasPaidOrder: false, now: 1 }),
+    () => buildOrder({ req: parseCheckoutRequest({ items: [{ productId: "marlowe-pleated-wide-leg-trousers", variantId: "charcoal", qty: 1 }], address }), products: inactive, uid: "u", email: "", hasPaidOrder: false, now: 1 }),
     /no longer available/,
   );
 });
@@ -60,25 +60,25 @@ test("orders record each line's seller; inactive listings can't be bought", () =
 test("order split: commission on third-party lines only, exact cents", () => {
   const items = [
     { productId: "a", variantId: "x", title: "A", variantName: "", price: 149, qty: 2 },
-    { productId: "b", variantId: "x", title: "B", variantName: "", price: 119.99, qty: 3, seller: "ridgeline-tool-supply" },
-    { productId: "c", variantId: "x", title: "C", variantName: "", price: 10.01, qty: 1, seller: "harbor-fastener-co" },
+    { productId: "b", variantId: "x", title: "B", variantName: "", price: 119.99, qty: 3, seller: "atelier-rose" },
+    { productId: "c", variantId: "x", title: "C", variantName: "", price: 10.01, qty: 1, seller: "maison-lune" },
   ];
-  const split = splitOrder(items, { "harbor-fastener-co": 0.1 });
+  const split = splitOrder(items, { "maison-lune": 0.1 });
   const by = Object.fromEntries(split.map((s) => [s.seller, s]));
   assert.deepEqual([by.dolgers.grossCents, by.dolgers.commissionCents, by.dolgers.netCents], [29_800, 0, 29_800]);
-  assert.equal(by["ridgeline-tool-supply"].grossCents, 35_997);
-  assert.equal(by["ridgeline-tool-supply"].commissionCents, Math.round(35_997 * COMMISSION_RATE)); // 4320
-  assert.equal(by["ridgeline-tool-supply"].netCents, 35_997 - 4_320);
-  assert.equal(by["harbor-fastener-co"].commissionCents, 100); // 10% of 1001 = 100.1
+  assert.equal(by["atelier-rose"].grossCents, 35_997);
+  assert.equal(by["atelier-rose"].commissionCents, Math.round(35_997 * COMMISSION_RATE)); // 4320
+  assert.equal(by["atelier-rose"].netCents, 35_997 - 4_320);
+  assert.equal(by["maison-lune"].commissionCents, 100); // 10% of 1001 = 100.1
   // Bad stored rates are clamped rather than paying out more than was charged.
-  assert.equal(splitOrder([items[1]], { "ridgeline-tool-supply": 5 })[0].netCents, 0);
-  assert.equal(splitOrder([items[1]], { "ridgeline-tool-supply": -1 })[0].commissionCents, 0);
+  assert.equal(splitOrder([items[1]], { "atelier-rose": 5 })[0].netCents, 0);
+  assert.equal(splitOrder([items[1]], { "atelier-rose": -1 })[0].commissionCents, 0);
 
   const sos = buildSellerOrders({ items, uid: "u1", address }, "ord1", {}, 5);
   assert.deepEqual(sos.map((s) => [s.id, s.payout]), [
     ["ord1_dolgers", "none"],
-    ["ord1_ridgeline-tool-supply", "held"],
-    ["ord1_harbor-fastener-co", "held"],
+    ["ord1_atelier-rose", "held"],
+    ["ord1_maison-lune", "held"],
   ]);
 });
 
@@ -94,8 +94,8 @@ test("transfer reversal is proportional and capped", () => {
 // --- returns -----------------------------------------------------------------------------------
 
 const so: SellerOrder = {
-  orderId: "o1", seller: "ridgeline-tool-supply", uid: "u1", address,
-  items: [{ productId: "p1", variantId: "v1", title: "Thing", variantName: "Std", price: 49.5, qty: 2, seller: "ridgeline-tool-supply" }],
+  orderId: "o1", seller: "atelier-rose", uid: "u1", address,
+  items: [{ productId: "p1", variantId: "v1", title: "Thing", variantName: "Std", price: 49.5, qty: 2, seller: "atelier-rose" }],
   grossCents: 9_900, commissionCents: 1_188, netCents: 8_712, status: "shipped", shippedAt: 1_000 * DAY, payout: "transferred", createdAt: 999 * DAY,
 };
 
@@ -130,13 +130,13 @@ test("return workflow transitions", () => {
 
 test("seller application validation", () => {
   const good = {
-    businessName: "Acme Tools", legalName: "Acme Tools LLC", businessType: "llc", country: "us", website: "https://acme.example",
-    phone: "+1 555 010 2000", categories: ["power-tools", "not-a-category"], description: "We sell refurbished and new cordless tools to trades.",
+    businessName: "Acme Boutique", legalName: "Acme Boutique LLC", businessType: "llc", country: "us", website: "https://acme.example",
+    phone: "+1 555 010 2000", categories: ["dresses", "not-a-category"], description: "We sell independent label dresses and knitwear.",
   };
   const cats = categories.map((c) => c.slug);
   const out = validateApplication(good, cats);
   assert.equal(out.country, "US");
-  assert.deepEqual(out.categories, ["power-tools"]);
+  assert.deepEqual(out.categories, ["dresses"]);
   assert.throws(() => validateApplication({ ...good, businessType: "trust" }, cats), /business type/);
   assert.throws(() => validateApplication({ ...good, website: "javascript:alert(1)" }, cats), /Website/);
   assert.throws(() => validateApplication({ ...good, categories: [] }, cats), /category/);
@@ -144,17 +144,17 @@ test("seller application validation", () => {
 });
 
 test("listing validation: prices, options, category tree", () => {
-  const ctx = { categories, brandSlugs: ["voltra"] };
+  const ctx = { categories, brandSlugs: ["aurelia"] };
   const good = {
-    title: "Voltra Cordless Heat Gun", description: "Two heat settings and a nozzle kit for stripping paint.",
-    category: "power-tools", subcategory: "saws", brand: "voltra", voltage: "18V", specs: ["2 heat settings", ""],
-    variants: [{ name: "Tool only", price: 89.999 }, { name: "Kit", price: 149, compareAtPrice: 179, batteryIncluded: true }], stock: 12,
+    title: "Aurelia Linen Wrap Dress with Belt", description: "A breathable linen wrap dress with a removable fabric belt.",
+    category: "dresses", subcategory: "casual-dresses", brand: "aurelia", fit: "Petite", specs: ["Fabric: 100% linen", ""],
+    variants: [{ name: "Black", price: 89.999 }, { name: "Cream", price: 149, compareAtPrice: 179 }], stock: 12,
   };
   const l = validateListing(good, ctx);
   assert.equal(l.variants[0].price, 90);
-  assert.equal(l.variants[0].id, "tool-only");
-  assert.deepEqual(l.specs, ["2 heat settings"]);
-  assert.throws(() => validateListing({ ...good, subcategory: "mowers" }, ctx), /subcategory/);
+  assert.equal(l.variants[0].id, "black");
+  assert.deepEqual(l.specs, ["Fabric: 100% linen"]);
+  assert.throws(() => validateListing({ ...good, subcategory: "jeans" }, ctx), /subcategory/);
   assert.throws(() => validateListing({ ...good, brand: "acme" }, ctx), /brand/);
   assert.throws(() => validateListing({ ...good, variants: [{ name: "A", price: 0 }] }, ctx), /between/);
   assert.throws(() => validateListing({ ...good, variants: [{ name: "A", price: 50, compareAtPrice: 40 }] }, ctx), /higher/);
@@ -162,13 +162,13 @@ test("listing validation: prices, options, category tree", () => {
   assert.throws(() => validateListing({ ...good, stock: 1.5 }, ctx), /Stock/);
 
   const existing = l.variants;
-  const upd = validateListingUpdate({ variants: [{ id: "kit", name: "Kit", price: 139 }, { id: "tool-only", name: "Renamed", price: 80, compareAtPrice: 90 }], stock: 3 }, existing);
+  const upd = validateListingUpdate({ variants: [{ id: "cream", name: "Cream", price: 139 }, { id: "black", name: "Renamed", price: 80, compareAtPrice: 90 }], stock: 3 }, existing);
   assert.deepEqual(upd.variants, [
-    { id: "tool-only", name: "Tool only", price: 80, compareAtPrice: 90, batteryIncluded: false },
-    { id: "kit", name: "Kit", price: 139, batteryIncluded: true },
+    { id: "black", name: "Black", price: 80, compareAtPrice: 90 },
+    { id: "cream", name: "Cream", price: 139 },
   ]);
   assert.equal(upd.listingStatus, "active");
-  assert.throws(() => validateListingUpdate({ variants: [{ id: "tool-only", name: "x", price: 80 }], stock: 3 }, existing), /added or removed/);
+  assert.throws(() => validateListingUpdate({ variants: [{ id: "black", name: "x", price: 80 }], stock: 3 }, existing), /added or removed/);
 });
 
 test("tracking validation", () => {
@@ -183,25 +183,23 @@ test("collection filters", () => {
   const ids = (f: Record<string, string>) => filterProducts(catalog, filters(f)).map((p) => p.id);
   const all = ids({});
   assert.equal(all.length, catalog.length);
-  assert.ok(ids({ voltage: "12V" }).every((id) => byId.get(id)!.voltage === "12V"));
-  assert.ok(ids({ voltage: "12V,36V" }).length > ids({ voltage: "12V" }).length);
-  assert.deepEqual(ids({ voltage: "bogus" }), all); // unknown values are ignored, not "match nothing"
-  const withBattery = ids({ battery: "1" });
-  assert.ok(withBattery.includes("voltra-vx12-compact-drill-driver")); // kit option has batteries
-  assert.ok(!withBattery.includes("brunn-bn18-brad-nailer"));
-  assert.ok(!withBattery.includes("voltra-5ah-battery-twin")); // batteries themselves aren't "battery included" tools
+  assert.ok(ids({ fit: "Petite" }).length > 0);
+  assert.ok(ids({ fit: "Petite" }).every((id) => byId.get(id)!.fit === "Petite"));
+  assert.ok(ids({ fit: "Petite,Plus" }).length > ids({ fit: "Petite" }).length);
+  assert.deepEqual(ids({ fit: "bogus" }), all); // unknown values are ignored, not "match nothing"
   assert.ok(ids({ seller: "dolgers" }).every((id) => !byId.get(id)!.seller));
   assert.ok(ids({ seller: "marketplace" }).every((id) => !!byId.get(id)!.seller));
   assert.equal(ids({ seller: "dolgers" }).length + ids({ seller: "marketplace" }).length, all.length);
-  assert.ok(ids({ seller: "prairie-outdoor-power" }).includes("kestrel-lm46-cordless-mower"));
-  // Price range matches if any option is in range (VX12: $129 tool, $199 kit).
-  assert.ok(ids({ min: "150", max: "200" }).includes("voltra-vx12-compact-drill-driver"));
-  assert.ok(!ids({ max: "100" }).includes("voltra-vx12-compact-drill-driver"));
+  assert.ok(ids({ seller: "willow-and-thread" }).includes("willow-cashmere-blend-crewneck"));
+  // Price range matches if any option is in range (trench: $168 stone, $172 black).
+  assert.ok(ids({ min: "170", max: "175" }).includes("maison-double-breasted-trench"));
+  assert.ok(!ids({ max: "100" }).includes("maison-double-breasted-trench"));
   assert.deepEqual(ids({ min: "-5" }), all);
   const stockless: Product[] = catalog.map((p, i) => (i === 0 ? { ...p, stock: 0 } : p));
   assert.equal(filterProducts(stockless, filters({ stock: "in" })).length, catalog.length - 1);
+  assert.ok(ids({ clearance: "1" }).length > 0);
   assert.ok(ids({ clearance: "1" }).every((id) => byId.get(id)!.tags.includes("clearance")));
-  assert.deepEqual(ids({ sub: "mowers" }), ["kestrel-lm46-cordless-mower"]);
+  assert.deepEqual(ids({ sub: "robes" }), ["willow-waffle-knit-robe"]);
 });
 
 test("delivery window: same-day cutoff, weekends and handling days", () => {
@@ -226,24 +224,30 @@ test("delivery window: same-day cutoff, weekends and handling days", () => {
 test("financing, specs, bought-together, compare, policies", () => {
   assert.equal(monthlyPaymentCents(19_899), null);
   assert.equal(monthlyPaymentCents(49_900), 4_159); // 415.83 rounded up
-  const saw = byId.get("kestrel-cs165-brushless-circular-saw")!;
-  const rows = fullSpecs(saw, { brand: "Kestrel", seller: "Dolgers" });
-  assert.ok(rows.some((r) => r.label === "Max cut depth at 45°"));
-  assert.ok(rows.some((r) => r.label === "Battery included" && r.value.includes("Kit with 5.0Ah: Yes")));
-  const vx = fullSpecs(byId.get("voltra-vx12-compact-drill-driver")!, {});
-  assert.ok(vx.some((r) => r.label === "2-speed gearbox" && r.value === "0–400 / 0–1500 rpm"));
+  const coat = byId.get("maison-double-breasted-trench")!;
+  const rows = fullSpecs(coat, { brand: "Maison Lune", seller: "Maison Lune" });
+  assert.ok(rows.some((r) => r.label === "Fit" && r.value === "Regular sizing"));
+  assert.ok(rows.some((r) => r.label === "Colours" && r.value === "Stone · Black"));
+  const wrap = fullSpecs(byId.get("aurelia-floral-wrap-midi-dress")!, {});
+  assert.ok(wrap.some((r) => r.label === "Neckline" && r.value === "V-neck wrap with adjustable waist tie"));
+  // Without a spec table, "Label: value" highlights become rows.
+  const tee = fullSpecs(byId.get("sorella-ribbed-cotton-tee-3pack")!, {});
+  assert.ok(tee.some((r) => r.label === "Fabric" && r.value === "95% cotton, 5% elastane"));
 
-  const fbt = boughtTogether(saw, catalog);
-  assert.deepEqual(fbt.map((p) => p.id), ["kestrel-metal-cutting-blade-pack", "voltra-5ah-battery-twin"]);
-  // Fallback picks same-voltage power supplies / accessories, never the product itself.
-  const fb = boughtTogether(byId.get("brunn-fn16-angled-finish-nailer")!, catalog);
+  const fbt = boughtTogether(coat, catalog);
+  // The listing's own pick comes first, then the best-rated piece from another category tops up to two.
+  assert.equal(fbt.length, 2);
+  assert.equal(fbt[0].id, "marlowe-silk-feel-button-blouse");
+  assert.ok(fbt[1].category !== "outerwear");
+  // Fallback picks the best-rated pieces from other categories, never the product itself.
+  const fb = boughtTogether(byId.get("nomi-wide-leg-denim")!, catalog);
   assert.equal(fb.length, 2);
-  assert.ok(fb.every((p) => p.category === "accessories" || p.voltage === "18V"));
-  const cmp = compareSet(saw, catalog);
-  assert.equal(cmp[0].subcategory, "saws");
-  assert.ok(!cmp.some((p) => p.id === saw.id));
+  assert.ok(fb.every((p) => p.category !== "bottoms" && p.id !== "nomi-wide-leg-denim"));
+  const cmp = compareSet(byId.get("nomi-high-waist-straight-jeans")!, catalog);
+  assert.equal(cmp[0].subcategory, "jeans");
+  assert.ok(cmp.every((p) => p.category === "bottoms" && p.id !== "nomi-high-waist-straight-jeans"));
 
-  const ridge = sellers.find((s) => s.slug === "ridgeline-tool-supply")!;
-  assert.match(policyLines(ridge).returns, /handled by Ridgeline/);
+  const atelier = sellers.find((s) => s.slug === "atelier-rose")!;
+  assert.match(policyLines(atelier).returns, /handled by Atelier Rose/);
   assert.match(policyLines(sellers[0]).returns, /handled by Dolgers\.$/);
 });

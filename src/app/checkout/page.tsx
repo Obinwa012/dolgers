@@ -67,7 +67,7 @@ function Checkout() {
     return (
       <div className="container-x py-20 text-center">
         <p className="text-muted">Your cart is empty.</p>
-        <Link href="/collections/all" className="btn btn-brand mt-5">Shop tools</Link>
+        <Link href="/collections/all" className="btn btn-brand mt-5">Keep shopping</Link>
       </div>
     );
 

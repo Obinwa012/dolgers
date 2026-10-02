@@ -14,7 +14,7 @@ export default function WishlistGrid({ brands }: { brands: Brand[] }) {
       {list.length === 0 ? (
         <div className="mt-10 rounded-lg border border-dashed p-12 text-center">
           <p className="text-muted">No saved items yet. Tap the heart on any product to save it.</p>
-          <Link href="/collections/all" className="btn btn-brand mt-5">Browse tools</Link>
+          <Link href="/collections/all" className="btn btn-brand mt-5">Browse new arrivals</Link>
         </div>
       ) : (
         <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5 xl:grid-cols-4">

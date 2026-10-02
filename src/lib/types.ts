@@ -1,29 +1,23 @@
 export type IconKey =
-  | "drill"
-  | "saw"
-  | "hammer"
-  | "wrench"
-  | "battery"
-  | "sprout"
-  | "box"
-  | "flame"
-  | "hardhat"
-  | "lamp"
-  | "nut"
-  | "ruler"
-  | "fan";
+  | "dress"
+  | "top"
+  | "knit"
+  | "coat"
+  | "pants"
+  | "skirt"
+  | "active"
+  | "sleep"
+  | "denim";
 
 export interface Variant {
   id: string;
   name: string;
   price: number;
   compareAtPrice?: number;
-  /** True when this option ships with at least one battery (kits). Drives the "Battery included" filter. */
-  batteryIncluded?: boolean;
 }
 
-/** Voltage platform, for the filter. "Corded" and "Manual" cover tools with no battery platform. */
-export type Voltage = "12V" | "18V" | "36V" | "Corded" | "Manual";
+/** Size range a garment is cut for, used by the collection filter. */
+export type Fit = "Petite" | "Regular" | "Tall" | "Plus";
 
 export interface SpecRow {
   label: string;
@@ -50,7 +44,9 @@ export interface Product {
   description: string;
   specs: string[]; // short highlights
   specTable?: SpecRow[]; // full specifications
-  voltage?: Voltage;
+  fit?: Fit;
+  /** Units sold, shown as "2k+ paid" on cards. Falls back to a figure derived from reviewCount. */
+  sold?: number;
   image?: string; // optional real photo URL; falls back to generated art
   icon: IconKey;
   tint: string; // hex used for generated art

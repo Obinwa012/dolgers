@@ -15,7 +15,7 @@ export interface DiscountRule {
 }
 
 export const DISCOUNT_CODES: Record<string, DiscountRule> = {
-  FIRSTBUILD: { percentOff: 5, firstOrderOnly: true },
+  FIRSTLOOK: { percentOff: 5, firstOrderOnly: true },
 };
 
 export const normalizeCode = (code: string | null | undefined) => (code ?? "").trim().toUpperCase();
@@ -35,33 +35,33 @@ export interface Bundle {
 
 export const BUNDLES: Bundle[] = [
   {
-    id: "jigsaw-power-pack",
-    title: "Jigsaw power pack",
-    blurb: "JS18 jigsaw, a 5.0Ah twin pack and a rapid charger: everything to start cutting.",
+    id: "weekend-denim-set",
+    title: "Weekend denim outfit",
+    blurb: "High-waist straight jeans, the 3-pack of ribbed tees and a relaxed linen blazer: three looks from one order.",
     items: [
-      { productId: "voltra-js18-brushless-jigsaw", variantId: "tool" },
-      { productId: "voltra-5ah-battery-twin", variantId: "std" },
-      { productId: "brunn-dual-port-rapid-charger", variantId: "std" },
+      { productId: "nomi-high-waist-straight-jeans", variantId: "mid" },
+      { productId: "sorella-ribbed-cotton-tee-3pack", variantId: "neutrals" },
+      { productId: "marlowe-relaxed-linen-blazer", variantId: "slate" },
     ],
     percentOff: 10,
   },
   {
-    id: "compact-drill-starter",
-    title: "Compact drill starter set",
-    blurb: "The VX12 kit plus a stackable case system to keep it all together.",
+    id: "dress-and-layer",
+    title: "Dress and layer",
+    blurb: "The floral wrap midi dress with a relaxed linen blazer to take it from brunch to the office.",
     items: [
-      { productId: "voltra-vx12-compact-drill-driver", variantId: "kit" },
-      { productId: "axelwood-stackable-case-system", variantId: "std" },
+      { productId: "aurelia-floral-wrap-midi-dress", variantId: "rose" },
+      { productId: "marlowe-relaxed-linen-blazer", variantId: "slate" },
     ],
     percentOff: 10,
   },
   {
-    id: "power-up",
-    title: "Power-up pair",
-    blurb: "Twin 5.0Ah batteries and the dual-port charger that fills both at once.",
+    id: "studio-pair",
+    title: "Studio pair",
+    blurb: "High-rise leggings and the longline sports bra, both in black.",
     items: [
-      { productId: "voltra-5ah-battery-twin", variantId: "std" },
-      { productId: "brunn-dual-port-rapid-charger", variantId: "std" },
+      { productId: "velvet-high-rise-leggings", variantId: "black" },
+      { productId: "velvet-longline-sports-bra", variantId: "black" },
     ],
     percentOff: 15,
   },

@@ -1,24 +1,24 @@
 @import "tailwindcss";
 
 @theme {
-  /* Forge: matte charcoal scale (replaces the old teal brand ramp) */
-  --color-brand-50: #f6f3ec;
-  --color-brand-100: #ece3d0;
-  --color-brand-500: #4a4a52;
-  --color-brand-600: #2e2e34;
-  --color-brand-700: #1b1b1d;
-  --color-brand-800: #141416;
-  --color-brand-900: #0e0e10;
-  /* Forge copper-amber */
-  --color-accent: #e08a00;
-  --color-accent-bright: #f5b301;
-  --color-sale: #d6263b;
-  --color-ink: #1b1b1d;
-  --color-muted: #6b6b70;
-  --color-surface: #f5f5f7;
+  /* Orange ramp (the brand-* utilities used across the site map to this) */
+  --color-brand-50: #fff4ee;
+  --color-brand-100: #ffe1d2;
+  --color-brand-500: #ff7a3d;
+  --color-brand-600: #ff5000;
+  --color-brand-700: #e64600;
+  --color-brand-800: #bf3a00;
+  --color-brand-900: #8f2c00;
+  --color-accent: #ff5000;
+  --color-accent-bright: #ff9000;
+  --color-accent-dark: #e64600;
+  --color-sale: #ff0036;
+  --color-ink: #333333;
+  --color-muted: #737373;
+  --color-surface: #f4f4f4;
 
-  --font-sans: var(--font-heebo), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-heebo), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "PingFang SC", "Helvetica Neue", Helvetica, Arial, "Segoe UI", system-ui, sans-serif;
+  --font-display: var(--font-sans);
 
   --animate-marquee: marquee 40s linear infinite;
   @keyframes marquee {
@@ -64,37 +64,34 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border-radius: 4px;
-  padding: 0.7rem 1.4rem;
-  font-family: var(--font-display);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+  border-radius: 999px;
+  padding: 0.65rem 1.5rem;
+  font-weight: 700;
   font-size: 0.95rem;
-  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s, filter 0.15s;
 }
 .btn-light {
   background: #fff;
-  color: var(--color-ink);
+  color: var(--color-accent);
 }
 .btn-light:hover {
-  background: var(--color-ink);
-  color: #fff;
+  background: var(--color-brand-50);
 }
 .btn-outline {
-  border: 1px solid var(--color-ink);
+  border: 1px solid var(--color-accent);
   background: #fff;
-  color: var(--color-ink);
+  color: var(--color-accent);
 }
 .btn-outline:hover {
-  background: var(--color-ink);
+  background: var(--color-accent);
   color: #fff;
 }
 .btn-brand {
-  background: var(--color-brand-700);
+  background: linear-gradient(90deg, #ff9000, #ff5000);
   color: #fff;
 }
 .btn-brand:hover {
-  background: var(--color-brand-900);
+  filter: brightness(0.95);
 }
 .btn:disabled {
   opacity: 0.55;
@@ -103,7 +100,6 @@ body {
 
 .section-title {
   font-family: var(--font-display);
-  text-transform: uppercase;
   font-size: clamp(1.75rem, 3.4vw, 2.75rem);
   line-height: 1.1;
   text-align: center;
@@ -112,7 +108,7 @@ body {
 .input {
   width: 100%;
   border: 1px solid #d4d7dc;
-  border-radius: 4px;
+  border-radius: 6px;
   padding: 0.7rem 0.9rem;
   background: #fff;
   /* Set explicitly: inputs otherwise inherit text-white inside the footer and become invisible. */
@@ -123,6 +119,12 @@ body {
   color: #7b8490;
 }
 .input:focus {
-  border-color: var(--color-brand-600);
+  border-color: var(--color-accent);
   box-shadow: 0 0 0 3px var(--color-brand-100);
+}
+
+/* Taobao-style search bar: 2px orange frame with a gradient button inside. */
+.search-frame {
+  border: 2px solid var(--color-accent);
+  border-radius: 999px;
 }
