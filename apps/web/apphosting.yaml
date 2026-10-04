@@ -28,9 +28,4 @@ env:
   # Typesense: host plus a search-only key, used by the website server to read the index.
   # (Not configured yet — the site falls back to in-memory search. Add TYPESENSE_HOST and
   # TYPESENSE_SEARCH_KEY when Typesense is set up; see DEPLOY.md.)
-
-  # Shared with Cloud Functions so only they can trigger a cache refresh.
-  - variable: REVALIDATE_SECRET
-    secret: REVALIDATE_SECRET
-    availability: [RUNTIME]
-# Build retry
+# Note: REVALIDATE_SECRET removed — needs proper App Hosting secret setup via console.
