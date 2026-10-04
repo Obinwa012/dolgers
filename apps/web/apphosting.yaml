@@ -1,6 +1,5 @@
 # Firebase App Hosting configuration for the DOLGERS website (this folder is the backend's root
 # directory). Secrets are references to Cloud Secret Manager; see DEPLOY.md.
-# Build 4: correct SA (firebase-app-hosting-compute) granted REVALIDATE_SECRET access.
 runConfig:
   minInstances: 0     # raise to 1 once traffic justifies avoiding cold starts
   maxInstances: 20    # hard cap: protects the bill from traffic floods
@@ -31,7 +30,6 @@ env:
   # TYPESENSE_SEARCH_KEY when Typesense is set up; see DEPLOY.md.)
 
   # Shared with Cloud Functions so only they can trigger a cache refresh.
-  # (Temporarily removed for build test — REVALIDATE_SECRET exists in Secret Manager.)
-  # - variable: REVALIDATE_SECRET
-  #   secret: REVALIDATE_SECRET
-  #   availability: [RUNTIME]
+  - variable: REVALIDATE_SECRET
+    secret: REVALIDATE_SECRET
+    availability: [RUNTIME]
