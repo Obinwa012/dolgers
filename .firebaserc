@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "default": "demo-dolgers",
+    "staging": "dolgers-staging",
+    "production": "dolgers-prod"
+  }
+}

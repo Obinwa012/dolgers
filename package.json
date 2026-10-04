@@ -1,0 +1,22 @@
+{
+  "name": "dolgers",
+  "private": true,
+  "workspaces": [
+    "packages/shared",
+    "apps/web",
+    "functions"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @dolgers/web",
+    "build": "npm run build -w @dolgers/shared && npm run build -w @dolgers/web && npm run build -w @dolgers/functions",
+    "lint": "npm run lint -w @dolgers/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test -w @dolgers/shared && npm run test -w @dolgers/functions",
+    "test:rules": "firebase emulators:exec --only firestore,storage --project demo-dolgers \"node --test firebase/tests/*.test.mjs\"",
+    "emulators": "firebase emulators:start --project demo-dolgers --import=.emulator-data --export-on-exit",
+    "seed": "npm run seed -w @dolgers/functions"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
