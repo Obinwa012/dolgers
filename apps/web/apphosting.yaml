@@ -31,6 +31,7 @@ env:
   # TYPESENSE_SEARCH_KEY when Typesense is set up; see DEPLOY.md.)
 
   # Shared with Cloud Functions so only they can trigger a cache refresh.
-  - variable: REVALIDATE_SECRET
-    secret: REVALIDATE_SECRET
-    availability: [RUNTIME]
+  # (Temporarily removed for build test — REVALIDATE_SECRET exists in Secret Manager.)
+  # - variable: REVALIDATE_SECRET
+  #   secret: REVALIDATE_SECRET
+  #   availability: [RUNTIME]
