@@ -18,7 +18,7 @@ export const productsSchema = {
     { name: 'vendorSlug', type: 'string', index: false, optional: true },
     { name: 'vendorName', type: 'string', facet: true },
     { name: 'department', type: 'string', facet: true },
-    { name: 'categoryPath', type: 'string[]' },
+    { name: 'categoryPath', type: 'string[]', facet: true },
     { name: 'categoryIds', type: 'string[]', facet: true },
     { name: 'categoryLeaf', type: 'string', facet: true },
     { name: 'colour', type: 'string', facet: true },

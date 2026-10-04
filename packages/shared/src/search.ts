@@ -43,6 +43,8 @@ export type SortKey = keyof typeof SORTS;
 export interface SearchQuery {
   q: string;
   categoryId: string | null;
+  /** Category slug across departments, e.g. 'shoes' for men's and boys' shoes. */
+  leaf: string | null;
   vendorId: string | null;
   department: string | null;
   sizes: string[];
