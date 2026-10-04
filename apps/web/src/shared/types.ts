@@ -157,6 +157,8 @@ export interface Product {
   reviewNote: string;
   /** Customer reviews for social proof. */
   reviews?: ProductReview[];
+  /** Freight data from vetting (method, ETA, cost). */
+  shipping?: ProductShipping;
   /** Featured products sort first under "Featured". */
   featured: boolean;
   publishedAt: Millis | null;
@@ -170,6 +172,14 @@ export interface ProductReview {
   text: string;
   origin?: string;
   size?: string;
+}
+
+/** Freight data from the AliExpress API vetting. */
+export interface ProductShipping {
+  method: string;
+  etaDays: string;
+  cost: number;
+  tracking: boolean;
 }
 
 /** `inventory/{sku}`: written by Functions only. */
