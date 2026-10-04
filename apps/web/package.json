@@ -21,7 +21,7 @@
     "server-only": "^0.0.1",
     "typesense": "^3.1.0",
     "zod": "^4.6.5",
-    "@dolgers/shared": "file:../../packages/shared"
+    "@dolgers/shared": "file:./vendor/shared"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
