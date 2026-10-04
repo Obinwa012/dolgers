@@ -9,6 +9,9 @@ import { SectionHeading } from '@/components/ui';
 import { nowMs, productToCard } from '@/components/shop/cards';
 import { getCategories, getHome, getNewArrivals, getProductsByIds, getVendors } from '@/lib/server/catalog';
 
+// The homepage shows live new arrivals: always render from Firestore, never a stale build.
+export const dynamic = 'force-dynamic';
+
 const FOUNDATIONS: { id: string; shot: string }[] = [
   { id: 'men--outerwear', shot: 'Wool overcoat on rail' },
   { id: 'men--knitwear', shot: 'Folded merino knits' },
