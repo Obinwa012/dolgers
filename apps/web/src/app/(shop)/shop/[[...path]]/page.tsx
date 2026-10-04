@@ -5,6 +5,9 @@ import { loadListing } from '@/components/shop/listing-data';
 import { ShopListing, type Chip } from '@/components/shop/ShopListing';
 import { getCategories } from '@/lib/server/catalog';
 
+// Always render from live Firestore: never serve a stale pre-built copy of the catalog.
+export const dynamic = 'force-dynamic';
+
 function cleanPath(path: string[] | undefined): string[] {
   return (path ?? []).slice(0, 4).map((s) => decodeURIComponent(s).toLowerCase());
 }
@@ -48,6 +51,7 @@ export default async function ShopPage({ params, searchParams }: PageProps<'/sho
         description="Every piece from every maker on DOLGERS, for men and boys."
         breadcrumbs={[{ label: 'Home', href: '/' }, { label: 'Shop' }]}
         chips={chips}
+        emptyMessage="No products yet. Check back soon."
       />
     );
   }
@@ -98,6 +102,7 @@ export default async function ShopPage({ params, searchParams }: PageProps<'/sho
       breadcrumbs={breadcrumbs}
       departments={departments && departments.length > 1 ? departments : undefined}
       chips={chips}
+      emptyMessage="No products here yet. Check back soon."
     />
   );
 }
