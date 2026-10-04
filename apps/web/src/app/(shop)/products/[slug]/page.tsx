@@ -62,6 +62,9 @@ function jsonLd(product: Product, vendor: Vendor | null): string {
   return JSON.stringify(data).replace(/</g, '\\u003c');
 }
 
+// Always render from live Firestore: never serve a stale pre-built copy of the product.
+export const dynamic = 'force-dynamic';
+
 export default async function ProductPage({ params }: PageProps<'/products/[slug]'>) {
   const { slug } = await params;
   const product = await getProduct(slug);
