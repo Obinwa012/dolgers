@@ -340,17 +340,21 @@ export interface CallToAction {
   href: string;
 }
 
+export interface HomeHero {
+  eyebrow: string;
+  title: string;
+  body: string;
+  primary: CallToAction;
+  secondary: CallToAction;
+  image: ProductImage | null;
+}
+
 /** `content/home`: editable from the admin console. */
 export interface HomeContent {
   announcement: string;
-  hero: {
-    eyebrow: string;
-    title: string;
-    body: string;
-    primary: CallToAction;
-    secondary: CallToAction;
-    image: ProductImage | null;
-  };
+  announcementSlides: string[];
+  hero: HomeHero;
+  heroSlides: HomeHero[];
   departments: { title: string; body: string; cta: CallToAction; image: ProductImage | null }[];
   edit: {
     eyebrow: string;

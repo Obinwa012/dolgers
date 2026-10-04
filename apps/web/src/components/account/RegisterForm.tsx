@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent, type InputHTMLAttributes } from 'react';
 import { z } from 'zod';
 import { Notice } from '@/components/ui';
+import { DrawerLink } from '@/components/RouteDrawer';
 import { useAuth } from '@/context/AuthProvider';
 import { MIN_PASSWORD, authErrorMessage, withNext } from './authHelpers';
 import { GoogleButton, OrDivider } from './GoogleButton';
@@ -101,7 +102,7 @@ export function RegisterForm({ next }: { next: string }) {
       <GoogleButton disabled={!enabled} onDone={() => router.replace(next)} onError={setError} />
       <p className="mt-10 border-t border-line pt-8 text-sm text-muted">
         Already have an account?{' '}
-        <Link href={withNext('/sign-in', next)} className="text-ink underline underline-offset-4">Sign in</Link>
+        <DrawerLink href={withNext('/sign-in', next)} className="text-ink underline underline-offset-4">Sign in</DrawerLink>
       </p>
     </div>
   );

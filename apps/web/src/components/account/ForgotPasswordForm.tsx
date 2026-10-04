@@ -1,9 +1,9 @@
 'use client';
 
-import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { z } from 'zod';
 import { Notice } from '@/components/ui';
+import { DrawerLink } from '@/components/RouteDrawer';
 import { useAuth } from '@/context/AuthProvider';
 import { authErrorMessage, withNext } from './authHelpers';
 
@@ -39,7 +39,7 @@ export function ForgotPasswordForm({ next }: { next: string }) {
     return (
       <div>
         <Notice tone="success">If an account exists for {email.trim()}, a link to reset your password is on its way. It can take a few minutes; check your spam folder too.</Notice>
-        <Link href={withNext('/sign-in', next)} className="btn btn-primary mt-8 w-full">Back to sign in</Link>
+        <DrawerLink href={withNext('/sign-in', next)} className="btn btn-primary mt-8 w-full">Back to sign in</DrawerLink>
       </div>
     );
   }
@@ -56,7 +56,7 @@ export function ForgotPasswordForm({ next }: { next: string }) {
         <button type="submit" className="btn btn-primary w-full" disabled={!enabled || busy}>{busy ? 'Sending…' : 'Send reset link'}</button>
       </form>
       <p className="mt-10 border-t border-line pt-8 text-sm text-muted">
-        Remembered it? <Link href={withNext('/sign-in', next)} className="text-ink underline underline-offset-4">Sign in</Link>
+        Remembered it? <DrawerLink href={withNext('/sign-in', next)} className="text-ink underline underline-offset-4">Sign in</DrawerLink>
       </p>
     </div>
   );

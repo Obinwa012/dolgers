@@ -2,7 +2,7 @@
 
 import { collection, doc, getDoc, limit, orderBy, query, where } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import { homeContentSchema, type CallToAction, type HomeContent, type Product } from '@dolgers/shared';
+import { homeContentSchema, type CallToAction, type HomeContent, type HomeHero, type Product } from '@dolgers/shared';
 import { formatDateTime } from '@/components/dashboard/format';
 import { useAction, useLiveQuery } from '@/components/dashboard/hooks';
 import { ImageField } from '@/components/dashboard/ImageUpload';
@@ -14,9 +14,19 @@ import { firebase } from '@/lib/firebase/client';
 type HomeForm = Omit<HomeContent, 'updatedAt'>;
 
 const CTA: CallToAction = { label: '', href: '/' };
+const emptyHero = (): HomeHero => ({
+  eyebrow: '',
+  title: '',
+  body: '',
+  primary: { ...CTA },
+  secondary: { ...CTA },
+  image: null,
+});
 const BLANK: HomeForm = {
   announcement: '',
-  hero: { eyebrow: '', title: '', body: '', primary: { ...CTA }, secondary: { ...CTA }, image: null },
+  announcementSlides: [],
+  hero: emptyHero(),
+  heroSlides: [],
   departments: [],
   edit: { eyebrow: '', title: '', body: '', cta: { ...CTA }, image: null, productIds: [] },
   newArrivalIds: [],
@@ -55,6 +65,10 @@ function HomeEditor({ initial, updatedAt }: { initial: HomeForm; updatedAt: numb
   const action = useAction();
   const live = useLiveQuery<Product>('products:live', (db) => query(collection(db, 'products'), where('status', '==', 'live'), orderBy('publishedAt', 'desc'), limit(300)));
   const hero = (patch: Partial<HomeForm['hero']>) => setForm((f) => ({ ...f, hero: { ...f.hero, ...patch } }));
+  const updateHero = (index: number, patch: Partial<HomeHero>) => {
+    if (index === 0) return hero(patch);
+    setForm((f) => ({ ...f, heroSlides: f.heroSlides.map((slide, i) => (i === index - 1 ? { ...slide, ...patch } : slide)) }));
+  };
   const edit = (patch: Partial<HomeForm['edit']>) => setForm((f) => ({ ...f, edit: { ...f.edit, ...patch } }));
   const dept = (i: number, patch: Partial<HomeForm['departments'][number]>) =>
     setForm((f) => ({ ...f, departments: f.departments.map((d, k) => (k === i ? { ...d, ...patch } : d)) }));
@@ -79,18 +93,66 @@ function HomeEditor({ initial, updatedAt }: { initial: HomeForm; updatedAt: numb
       {updatedAt ? <p className="-mt-4 text-sm text-muted">Last saved {formatDateTime(updatedAt)}</p> : null}
       <Panel title="Announcement bar">
         <TextField id="announcement" label="Text (leave empty to hide)" max={140} value={form.announcement} onChange={(v) => setForm((f) => ({ ...f, announcement: v }))} />
+        <div className="mt-5 space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className="field-label mb-0">Additional rotating messages</p>
+            {form.announcementSlides.length < 4 ? (
+              <button type="button" className="label text-muted hover:text-ink" onClick={() => setForm((f) => ({ ...f, announcementSlides: [...f.announcementSlides, ''] }))}>
+                Add message
+              </button>
+            ) : null}
+          </div>
+          {form.announcementSlides.map((message, index) => (
+            <div key={index} className="flex items-end gap-3">
+              <div className="min-w-0 flex-1">
+                <TextField
+                  id={`announcement-${index}`}
+                  label={`Message ${index + 2}`}
+                  max={140}
+                  value={message}
+                  onChange={(value) => setForm((f) => ({ ...f, announcementSlides: f.announcementSlides.map((item, i) => (i === index ? value : item)) }))}
+                />
+              </div>
+              <button
+                type="button"
+                className="label shrink-0 pb-4 text-muted hover:text-danger"
+                onClick={() => setForm((f) => ({ ...f, announcementSlides: f.announcementSlides.filter((_, i) => i !== index) }))}
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+        </div>
       </Panel>
 
-      <Panel title="Hero">
-        <div className="space-y-5">
-          <div className="grid gap-5 md:grid-cols-2">
-            <TextField id="hero-eyebrow" label="Eyebrow" max={60} value={form.hero.eyebrow} onChange={(v) => hero({ eyebrow: v })} />
-            <TextField id="hero-title" label="Title" max={80} value={form.hero.title} onChange={(v) => hero({ title: v })} />
-          </div>
-          <TextField id="hero-body" label="Body" max={300} area value={form.hero.body} onChange={(v) => hero({ body: v })} />
-          <CtaFields id="hero-primary" label="Primary button" value={form.hero.primary} onChange={(v) => hero({ primary: v })} />
-          <CtaFields id="hero-secondary" label="Secondary button" value={form.hero.secondary} onChange={(v) => hero({ secondary: v })} />
-          <ImageField label="Hero image" value={form.hero.image} onChange={(img) => hero({ image: img })} target={{ kind: 'admin' }} />
+      <Panel
+        title="Hero slideshow"
+        actions={form.heroSlides.length < 4 ? (
+          <button type="button" className="label text-muted hover:text-ink" onClick={() => setForm((f) => ({ ...f, heroSlides: [...f.heroSlides, emptyHero()] }))}>
+            Add slide
+          </button>
+        ) : null}
+      >
+        <p className="mb-5 text-sm text-muted">The homepage rotates through these campaigns. Add up to five slides; the first is shown first.</p>
+        <div className="divide-y divide-line">
+          {[form.hero, ...form.heroSlides].map((slide, index) => (
+            <div key={index} className="space-y-5 py-6 first:pt-0 last:pb-0">
+              <div className="flex items-center justify-between">
+                <h3 className="label text-muted">Slide {index + 1}</h3>
+                {index > 0 ? (
+                  <button type="button" className="label text-muted hover:text-danger" onClick={() => setForm((f) => ({ ...f, heroSlides: f.heroSlides.filter((_, i) => i !== index - 1) }))}>Remove</button>
+                ) : null}
+              </div>
+              <div className="grid gap-5 md:grid-cols-2">
+                <TextField id={`hero-${index}-eyebrow`} label="Eyebrow" max={60} value={slide.eyebrow} onChange={(v) => updateHero(index, { eyebrow: v })} />
+                <TextField id={`hero-${index}-title`} label="Title" max={80} value={slide.title} onChange={(v) => updateHero(index, { title: v })} />
+              </div>
+              <TextField id={`hero-${index}-body`} label="Body" max={300} area value={slide.body} onChange={(v) => updateHero(index, { body: v })} />
+              <CtaFields id={`hero-${index}-primary`} label="Primary button" value={slide.primary} onChange={(v) => updateHero(index, { primary: v })} />
+              <CtaFields id={`hero-${index}-secondary`} label="Secondary button" value={slide.secondary} onChange={(v) => updateHero(index, { secondary: v })} />
+              <ImageField label="Campaign image" value={slide.image} onChange={(img) => updateHero(index, { image: img })} target={{ kind: 'admin' }} aspect="aspect-[21/9]" />
+            </div>
+          ))}
         </div>
       </Panel>
 
@@ -164,7 +226,17 @@ export default function AdminHomePage() {
         if (!live) return;
         if (!snap.exists()) return setLoaded({ form: BLANK, updatedAt: null });
         const { updatedAt, ...rest } = snap.data() as HomeContent;
-        setLoaded({ form: { ...BLANK, ...rest, hero: { ...BLANK.hero, ...rest.hero }, edit: { ...BLANK.edit, ...rest.edit } }, updatedAt: updatedAt ?? null });
+        setLoaded({
+          form: {
+            ...BLANK,
+            ...rest,
+            announcementSlides: rest.announcementSlides ?? [],
+            hero: { ...BLANK.hero, ...rest.hero },
+            heroSlides: (rest.heroSlides ?? []).map((slide) => ({ ...BLANK.hero, ...slide })),
+            edit: { ...BLANK.edit, ...rest.edit },
+          },
+          updatedAt: updatedAt ?? null,
+        });
       })
       .catch((err) => { if (live) setError(errorMessage(err)); });
     return () => { live = false; };

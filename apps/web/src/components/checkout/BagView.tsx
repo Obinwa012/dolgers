@@ -14,7 +14,7 @@ import { QuantityStepper } from './QuantityStepper';
 import { bagNotice, savedPromo } from './storage';
 import { useQuote } from './useQuote';
 
-export function BagView() {
+export function BagView({ drawer = false }: { drawer?: boolean }) {
   const { lines, count, hydrated, setQuantity, remove } = useBag();
   const { has, toggle } = useWishlist();
   const [promoInput, setPromoInput] = useState('');
@@ -46,7 +46,7 @@ export function BagView() {
 
   if (!hydrated) {
     return (
-      <div className="container-page py-24">
+      <div className={drawer ? 'px-6 py-16 md:px-8' : 'container-page py-24'}>
         <Spinner label="Loading your bag" />
       </div>
     );
@@ -54,7 +54,7 @@ export function BagView() {
 
   if (lines.length === 0) {
     return (
-      <div className="container-page py-16 md:py-24">
+      <div className={drawer ? 'px-6 py-10 md:px-8' : 'container-page py-16 md:py-24'}>
         <h1 className="display text-[40px] md:text-[56px]">Your Bag</h1>
         <div className="mt-8 border-t border-ink pt-12">
           {notice ? <div className="mb-8"><Notice tone="error">{notice}</Notice></div> : null}
@@ -98,7 +98,7 @@ export function BagView() {
   const canCheckout = !!quote && !loading && bagProblems.length === 0 && quote.lines.length > 0;
 
   return (
-    <div className="container-page py-10 md:py-16">
+    <div className={drawer ? 'px-6 py-8 md:px-8' : 'container-page py-10 md:py-16'}>
       <div className="flex items-end justify-between gap-6 border-b border-ink pb-6">
         <h1 className="display text-[40px] md:text-[56px]">Your Bag</h1>
         <p className="text-sm text-muted">{plural(count, 'item')}</p>
@@ -106,7 +106,7 @@ export function BagView() {
 
       <p className="sr-only" aria-live="polite">{status}</p>
 
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_370px] lg:gap-16">
+      <div className={drawer ? 'grid gap-8' : 'grid gap-10 lg:grid-cols-[minmax(0,1fr)_370px] lg:gap-16'}>
         <section aria-label="Items in your bag">
           {notice ? <div className="mt-6"><Notice tone="error">{notice}</Notice></div> : null}
           {error ? <div className="mt-6"><Notice tone="error">{error}</Notice></div> : null}

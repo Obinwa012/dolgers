@@ -42,7 +42,8 @@ export const getHome = unstable_cache(
     const db = serverDb();
     if (!db) return demoHome;
     const snap = await db.collection('content').doc('home').get();
-    return (snap.data() as HomeContent | undefined) ?? demoHome;
+    const home = snap.data() as HomeContent | undefined;
+    return home ? { ...home, announcementSlides: home.announcementSlides ?? [], heroSlides: home.heroSlides ?? [] } : demoHome;
   },
   ['home'],
   { tags: ['home'], revalidate: HOUR },

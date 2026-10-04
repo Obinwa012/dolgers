@@ -1,9 +1,9 @@
 'use client';
 
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Notice } from '@/components/ui';
+import { DrawerLink } from '@/components/RouteDrawer';
 import { useAuth } from '@/context/AuthProvider';
 import { authErrorMessage, withNext } from './authHelpers';
 import { GoogleButton, OrDivider } from './GoogleButton';
@@ -48,7 +48,7 @@ export function SignInForm({ next }: { next: string }) {
         <div>
           <div className="flex items-baseline justify-between">
             <label htmlFor="signin-password" className="field-label">Password</label>
-            <Link href={withNext('/forgot-password', next)} className="text-xs text-muted underline underline-offset-2 hover:text-ink">Forgot password?</Link>
+            <DrawerLink href={withNext('/forgot-password', next)} className="text-xs text-muted underline underline-offset-2 hover:text-ink">Forgot password?</DrawerLink>
           </div>
           <input id="signin-password" type="password" className="field" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required disabled={!enabled} />
         </div>
@@ -59,7 +59,7 @@ export function SignInForm({ next }: { next: string }) {
       <GoogleButton disabled={!enabled} onDone={() => router.replace(next)} onError={setError} />
       <p className="mt-10 border-t border-line pt-8 text-sm text-muted">
         New to DOLGERS?{' '}
-        <Link href={withNext('/register', next)} className="text-ink underline underline-offset-4">Create an account</Link>
+        <DrawerLink href={withNext('/register', next)} className="text-ink underline underline-offset-4">Create an account</DrawerLink>
       </p>
     </div>
   );

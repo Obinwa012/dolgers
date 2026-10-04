@@ -151,12 +151,16 @@ export const promoInputSchema = z.object({
 
 const ctaSchema = z.object({ label: text(40), href: z.string().trim().regex(/^\/[A-Za-z0-9/_?=&.-]*$/).max(200) });
 
+const homeHeroSchema = z.object({
+  eyebrow: text(60), title: required(80), body: text(300),
+  primary: ctaSchema, secondary: ctaSchema, image: imageSchema.nullable(),
+});
+
 export const homeContentSchema = z.object({
   announcement: text(140),
-  hero: z.object({
-    eyebrow: text(60), title: required(80), body: text(300),
-    primary: ctaSchema, secondary: ctaSchema, image: imageSchema.nullable(),
-  }),
+  announcementSlides: z.array(text(140)).max(4).default([]),
+  hero: homeHeroSchema,
+  heroSlides: z.array(homeHeroSchema).max(4).default([]),
   departments: z.array(z.object({ title: required(40), body: text(200), cta: ctaSchema, image: imageSchema.nullable() })).max(4),
   edit: z.object({
     eyebrow: text(60), title: required(80), body: text(400), cta: ctaSchema, image: imageSchema.nullable(),

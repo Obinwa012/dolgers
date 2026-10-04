@@ -3,11 +3,12 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { ProductCard, type CardProduct } from '@/components/ProductCard';
+import { DrawerLink } from '@/components/RouteDrawer';
 import { Notice, Spinner } from '@/components/ui';
 import { useAuth } from '@/context/AuthProvider';
 import { useWishlist } from '@/context/WishlistProvider';
 
-export function WishlistView() {
+export function WishlistView({ drawer = false }: { drawer?: boolean }) {
   const { ids } = useWishlist();
   const { enabled, isMember } = useAuth();
   const [cache, setCache] = useState<Map<string, CardProduct | null>>(new Map());
@@ -45,7 +46,7 @@ export function WishlistView() {
   const loading = missing.length > 0 && !error;
 
   return (
-    <div className="container-page py-10 md:py-16">
+    <div className={drawer ? 'px-6 py-8 md:px-8' : 'container-page py-10 md:py-16'}>
       <div className="flex items-end justify-between gap-6 border-b border-ink pb-6">
         <h1 className="display text-[40px] md:text-[56px]">Wishlist</h1>
         <p className="text-sm text-muted">{products.length} saved</p>
@@ -55,7 +56,7 @@ export function WishlistView() {
         <div className="mt-6">
           <Notice>
             Your wishlist is saved in this browser.{' '}
-            <Link href="/sign-in?next=/wishlist" className="underline underline-offset-2">Sign in</Link> to keep it on every device.
+            <DrawerLink href="/sign-in?next=/wishlist" className="underline underline-offset-2">Sign in</DrawerLink> to keep it on every device.
           </Notice>
         </div>
       ) : null}
@@ -72,7 +73,7 @@ export function WishlistView() {
         </div>
       ) : (
         <>
-          <div className="mt-10 grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 md:gap-x-6 lg:grid-cols-4">
+          <div className={`mt-10 grid grid-cols-2 gap-x-4 gap-y-10 ${drawer ? '' : 'md:grid-cols-3 md:gap-x-6 lg:grid-cols-4'}`}>
             {products.map((p) => <ProductCard key={p.id} product={p} />)}
           </div>
           {loading ? <div className="mt-10"><Spinner label="Loading saved pieces" /></div> : null}

@@ -1,6 +1,7 @@
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import type { Category } from '@dolgers/shared';
+import { HeroCarousel } from '@/components/home/HeroCarousel';
 import { NewsletterForm } from '@/components/home/NewsletterForm';
 import { ProductCard } from '@/components/ProductCard';
 import { ProductImage, isDarkTone } from '@/components/ProductImage';
@@ -31,38 +32,10 @@ export default async function HomePage() {
   const now = nowMs();
   const byId = new Map(categories.map((c) => [c.id, c]));
   const tiles = FOUNDATIONS.map((f) => ({ ...f, category: byId.get(f.id) })).filter((t): t is { id: string; shot: string; category: Category } => !!t.category);
-  const hero = home.hero;
-  const heroDark = !!hero.image?.url || isDarkTone(hero.image?.tone ?? 'black');
 
   return (
     <>
-      {/* Hero */}
-      <section className={`relative ${heroDark ? 'text-white' : 'text-ink'}`}>
-        <div className="absolute inset-0">
-          <ProductImage
-          image={hero.image ?? { url: '', alt: '', tone: 'black' }}
-          sizes="100vw"
-          priority
-          showLabel={false}
-          className="h-full w-full"
-        />
-        </div>
-        {hero.image?.url ? <div className="absolute inset-0 bg-gradient-to-r from-black/55 to-black/10" aria-hidden /> : null}
-        {!hero.image?.url && hero.image?.alt ? (
-          <span className="absolute right-4 top-4 hidden text-[9px] uppercase tracking-[0.16em] text-white/45 md:block md:right-10">[Campaign image] {hero.image.alt}</span>
-        ) : null}
-        <div className="container-page relative flex min-h-[560px] flex-col justify-end pb-12 pt-32 md:min-h-[720px] md:pb-20">
-          {hero.eyebrow ? <p className={`label ${heroDark ? 'text-white/80' : 'text-muted'}`}>{hero.eyebrow}</p> : null}
-          <h1 className="display mt-5 max-w-3xl text-[56px] sm:text-[72px] md:text-[104px]">{hero.title}</h1>
-          {hero.body ? <p className={`mt-6 max-w-md text-[15px] leading-relaxed ${heroDark ? 'text-white/75' : 'text-muted'}`}>{hero.body}</p> : null}
-          <div className="mt-8 flex flex-wrap gap-3">
-            {hero.primary.label ? <Link href={hero.primary.href} className={`btn ${heroDark ? 'btn-light' : 'btn-primary'}`}>{hero.primary.label}</Link> : null}
-            {hero.secondary.label ? (
-              <Link href={hero.secondary.href} className={`btn ${heroDark ? 'btn-outline-light' : 'btn-secondary'}`}>{hero.secondary.label}</Link>
-            ) : null}
-          </div>
-        </div>
-      </section>
+      <HeroCarousel slides={[home.hero, ...(home.heroSlides ?? [])]} />
 
       {/* Shop by category */}
       {tiles.length ? (

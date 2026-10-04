@@ -260,15 +260,37 @@ export function demoStock(): Map<string, number> {
 }
 
 export const demoHome: HomeContent = {
-  announcement: 'Complimentary delivery and 30-day returns on every order',
+  announcement: 'Complimentary delivery on orders over $99',
+  announcementSlides: [
+    'Easy 30-day returns on every order',
+    'Discover independent makers, all in one place',
+  ],
   hero: {
     eyebrow: 'Autumn / Winter 2026',
     title: 'The Cold Season Edit',
     body: 'Overcoats, heavyweight knits and weatherproof boots from independent makers, for men and boys.',
     primary: { label: 'Shop men', href: '/shop/men' },
     secondary: { label: 'Shop boys', href: '/shop/boys' },
-    image: { url: '', alt: 'AW26 outerwear, shot on location', tone: 'black' },
+    image: {
+      url: 'https://images.pexels.com/photos/30953652/pexels-photo-30953652.jpeg?auto=compress&cs=tinysrgb&w=2400',
+      alt: 'Men in elegant attire indoors',
+      tone: 'black',
+    },
   },
+  heroSlides: [
+    {
+      eyebrow: 'Made for every day',
+      title: 'The Everyday Uniform',
+      body: 'Contemporary menswear and considered layers, selected for everyday wear.',
+      primary: { label: 'Shop men', href: '/shop/men' },
+      secondary: { label: 'Discover brands', href: '/brands' },
+      image: {
+        url: 'https://images.pexels.com/photos/35121659/pexels-photo-35121659.jpeg?auto=compress&cs=tinysrgb&w=2400',
+        alt: 'Stylish young man sitting on modern steps',
+        tone: 'charcoal',
+      },
+    },
+  ],
   departments: [
     { title: 'Men', body: 'Tailoring, outerwear and everyday essentials, built to last more than a season.', cta: { label: 'Shop men', href: '/shop/men' }, image: { url: '', alt: 'Men — layered tailoring', tone: 'charcoal' } },
     { title: 'Boys', body: 'Durable, washable pieces cut for growing up: from the playground to the weekend.', cta: { label: 'Shop boys', href: '/shop/boys' }, image: { url: '', alt: 'Boys — school-run layers', tone: 'stone' } },

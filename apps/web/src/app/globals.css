@@ -43,6 +43,178 @@
 }
 
 @layer components {
+  .announcement-bar {
+    min-height: 38px;
+    overflow: hidden;
+    background: #303030;
+    color: #ffffff;
+  }
+  .announcement-inner {
+    display: flex;
+    min-height: 38px;
+    max-width: 680px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-inline: auto;
+    padding-inline: 16px;
+  }
+  .announcement-arrow {
+    display: flex;
+    width: 28px;
+    height: 28px;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    transition: opacity 150ms;
+  }
+  .announcement-arrow:hover {
+    opacity: 0.7;
+  }
+  .announcement-arrow-spacer {
+    width: 28px;
+    flex: none;
+  }
+  .announcement-copy {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-width: 0;
+    white-space: nowrap;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.3;
+    animation: announcement-enter 220ms ease-out both;
+  }
+  .announcement-copy > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .announcement-detail {
+    flex: none;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-decoration-color: rgb(255 255 255 / 0.55);
+  }
+  .announcement-detail:hover {
+    text-decoration-color: white;
+  }
+  @keyframes announcement-enter {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .announcement-copy {
+      animation: none;
+    }
+  }
+
+  @keyframes hero-slide-enter {
+    from {
+      opacity: 0.55;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .hero-slide-enter {
+    animation: hero-slide-enter 500ms ease-out both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero-slide-enter {
+      animation: none;
+    }
+  }
+
+  .route-drawer-layer {
+    position: fixed;
+    z-index: 60;
+    inset: 0;
+  }
+  .route-drawer-backdrop {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background: rgb(0 0 0 / 0.42);
+    animation: drawer-backdrop-enter 200ms ease-out both;
+  }
+  .route-drawer-panel {
+    position: absolute;
+    inset-block: 0;
+    right: 0;
+    display: flex;
+    width: min(100%, 440px);
+    flex-direction: column;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: var(--color-paper);
+    box-shadow: -12px 0 40px rgb(0 0 0 / 0.12);
+    animation: drawer-enter 240ms ease-out both;
+  }
+  .route-drawer-toolbar {
+    position: sticky;
+    z-index: 1;
+    top: 0;
+    display: flex;
+    min-height: 60px;
+    flex: none;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--color-line);
+    background: var(--color-paper);
+    padding-inline: 24px;
+  }
+  .route-drawer-close {
+    display: inline-flex;
+    min-width: 40px;
+    min-height: 40px;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-ink);
+  }
+  .route-drawer-close:hover {
+    background: var(--color-stone);
+  }
+  .route-drawer-content {
+    min-height: 0;
+    flex: 1;
+  }
+  @keyframes drawer-backdrop-enter {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes drawer-enter {
+    from {
+      opacity: 0.8;
+      transform: translateX(32px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .route-drawer-backdrop,
+    .route-drawer-panel {
+      animation: none;
+    }
+  }
+
   /* Small uppercase tracked labels used across the mockup (eyebrows, buttons, nav). */
   .label {
     font-size: 11px;
