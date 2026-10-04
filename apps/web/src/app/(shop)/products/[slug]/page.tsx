@@ -38,8 +38,8 @@ const SIZING_NOTE: Record<SizeSystem, string> = {
 
 function dispatchText(vendor: Vendor | null): string {
   const d = vendor?.facts.dispatchDays;
-  if (!d) return 'Ships directly from the maker.';
-  return d[0] === d[1] ? `Ships from the maker in ${d[0]} working ${d[0] === 1 ? 'day' : 'days'}.` : `Ships from the maker in ${d[0]}–${d[1]} working days.`;
+  if (!d) return 'Ships from our US warehouse.';
+  return d[0] === d[1] ? `Ships in ${d[0]} working ${d[0] === 1 ? 'day' : 'days'}.` : `Ships in ${d[0]}–${d[1]} working days.`;
 }
 
 /** schema.org Product, serialised safely: '<' is escaped so the JSON can never close the script tag. */
@@ -164,8 +164,10 @@ export default async function ProductPage({ params }: PageProps<'/products/[slug
             </Accordion>
             <Accordion title="Delivery & returns">
               <p>
-                {DELIVERY.standard.label} delivery is free: {DELIVERY.standard.detail.toLowerCase()}. {DELIVERY.express.label} is{' '}
-                {formatMoney(DELIVERY.express.price)}: {DELIVERY.express.detail.toLowerCase()}. We deliver within the United States only.
+                {product.shipping
+                  ? `Free ${product.shipping.method} delivery: ${product.shipping.etaDays} days${product.shipping.tracking ? ', tracked' : ''}.`
+                  : `${DELIVERY.standard.label} delivery is free: ${DELIVERY.standard.detail.toLowerCase()}.`}{' '}
+                We deliver within the United States only.
               </p>
               <p>
                 {facts?.shipsFrom ? `This piece ships from ${facts.shipsFrom}. ` : ''}Return anything unworn within {RETURN_WINDOW_DAYS} days of delivery, free.{' '}
