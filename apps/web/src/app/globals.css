@@ -137,10 +137,9 @@
     font-size: 12px;
     color: var(--color-muted);
   }
-  /* Phones and portrait tablets: full width with a gutter. Anything wider (1024px and up,
-     i.e. landscape tablets, laptops and desktops): 95% of the window, centred. */
   .container-page {
     width: 100%;
+    max-width: 1440px;
     margin-inline: auto;
     padding-inline: 16px;
   }
@@ -149,8 +148,20 @@
       padding-inline: 40px;
     }
   }
+  /* The site header: same as the page on phones and portrait tablets, then 95% of the window
+     from 1024px up (landscape tablets, laptops, desktops), wider than the page body. */
+  .container-header {
+    width: 100%;
+    margin-inline: auto;
+    padding-inline: 16px;
+  }
+  @media (min-width: 768px) {
+    .container-header {
+      padding-inline: 40px;
+    }
+  }
   @media (min-width: 1024px) {
-    .container-page {
+    .container-header {
       width: 95%;
       padding-inline: 0;
     }

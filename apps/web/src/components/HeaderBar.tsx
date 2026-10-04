@@ -25,7 +25,7 @@ export function HeaderBar({ nav }: { nav: { label: string; href: string }[] }) {
 
   return (
     <div className="border-b border-line">
-      <div className="container-page flex h-16 items-center justify-between gap-4 md:h-[72px]">
+      <div className="container-header flex h-16 items-center justify-between gap-4 md:h-[72px]">
         <div className="flex items-center gap-3 lg:w-[220px]">
           <button type="button" className="-ml-2 p-2 lg:hidden" aria-label="Open menu" onClick={() => setMenuOpen(true)}>
             <Menu size={20} strokeWidth={1.5} />
@@ -70,7 +70,7 @@ export function HeaderBar({ nav }: { nav: { label: string; href: string }[] }) {
         <div className="border-t border-line bg-paper">
           <form
             role="search"
-            className="container-page flex items-center gap-3 py-4"
+            className="container-header flex items-center gap-3 py-4"
             onSubmit={(e) => {
               e.preventDefault();
               if (q.trim()) router.push(`/search?q=${encodeURIComponent(q.trim())}`);
