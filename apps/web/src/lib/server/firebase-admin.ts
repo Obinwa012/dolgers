@@ -15,9 +15,13 @@ export function serverDb(): Firestore | null {
   const projectId =
     process.env.GOOGLE_CLOUD_PROJECT ??
     process.env.GCLOUD_PROJECT ??
+    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ??
     (process.env.FIREBASE_CONFIG ? (JSON.parse(process.env.FIREBASE_CONFIG).projectId as string) : undefined) ??
     (process.env.FIRESTORE_EMULATOR_HOST ? process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID : undefined);
   if (!projectId) {
+    // Visible in Cloud Logging: if this ever fires in production, the storefront silently
+    // falls back to demo data instead of reading Firestore.
+    console.warn('[firebase-admin] no project id configured; running in demo mode (no Firestore)');
     db = null;
     return db;
   }
