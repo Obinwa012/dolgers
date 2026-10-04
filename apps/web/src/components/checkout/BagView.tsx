@@ -60,7 +60,7 @@ export function BagView({ drawer = false }: { drawer?: boolean }) {
           {notice ? <div className="mb-8"><Notice tone="error">{notice}</Notice></div> : null}
           <p className="text-lg">Your bag is empty.</p>
           <p className="mt-3 max-w-md text-sm leading-relaxed text-muted">
-            Pieces you add will wait here while you browse. Every maker ships directly to you, with complimentary delivery and 30-day returns.
+            Pieces you add will wait here while you browse. Every order ships directly to you, with complimentary delivery and 14-day returns.
           </p>
           <div className="mt-10 flex flex-wrap gap-3">
             <Link href="/shop/men" className="btn btn-primary">Shop men</Link>
