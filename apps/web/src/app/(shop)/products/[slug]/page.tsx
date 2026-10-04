@@ -18,8 +18,9 @@ export async function generateMetadata({ params }: PageProps<'/products/[slug]'>
   if (!product) return { title: 'Not found' };
   const description = `${product.description.slice(0, 150)}${product.description.length > 150 ? '…' : ''}`;
   const image = product.images.find((i) => i.url);
+  const brandName = product.brand ?? product.vendorName;
   return {
-    title: `${product.title} by ${product.vendorName}`,
+    title: `${product.title} by ${brandName}`,
     description,
     alternates: { canonical: `/products/${product.slug}` },
     openGraph: { title: product.title, description, images: image ? [{ url: image.url, alt: image.alt }] : undefined },
@@ -51,7 +52,7 @@ function jsonLd(product: Product, vendor: Vendor | null): string {
     sku: product.id,
     color: product.colour.name,
     image: product.images.filter((i) => i.url).map((i) => i.url),
-    brand: { '@type': 'Brand', name: vendor?.name ?? product.vendorName },
+    brand: { '@type': 'Brand', name: product.brand ?? vendor?.name ?? product.vendorName },
     category: product.categoryPath.join(' > '),
     url,
     offers:
@@ -100,7 +101,11 @@ export default async function ProductPage({ params }: PageProps<'/products/[slug
         <ProductGallery images={product.images} title={product.title} />
 
         <div className="md:sticky md:top-28 md:self-start">
-          <Link href={`/brands/${product.vendorSlug}`} className="label text-muted hover:text-ink">{product.vendorName}</Link>
+          {product.brand ? (
+            <p className="label text-muted">{product.brand}</p>
+          ) : (
+            <Link href={`/brands/${product.vendorSlug}`} className="label text-muted hover:text-ink">{product.vendorName}</Link>
+          )}
           <h1 className="display mt-3 text-[34px] md:text-[40px]">{product.title}</h1>
           <p className="mt-4 text-lg font-medium">
             {multiPrice ? `From ${formatMoney(product.priceMin)}` : formatMoney(product.priceMin)}
@@ -179,6 +184,30 @@ export default async function ProductPage({ params }: PageProps<'/products/[slug
             {related.slice(0, 4).map((p) => (
               <li key={p.id} className="w-[42%] shrink-0 snap-start md:w-auto">
                 <ProductCard product={productToCard(p, now)} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {product.reviews?.length ? (
+        <section className="mt-20 md:mt-28" aria-label="Customer reviews">
+          <div className="[&_h2]:text-[30px] md:[&_h2]:text-[40px]">
+            <SectionHeading title="What buyers say" />
+          </div>
+          <ul className="grid gap-4 md:grid-cols-2">
+            {product.reviews.map((review, i) => (
+              <li key={i} className="border border-line px-6 py-5">
+                <p className="text-sm tracking-wide" aria-label={`${review.stars} out of 5 stars`}>
+                  {'★'.repeat(review.stars)}{'☆'.repeat(5 - review.stars)}
+                </p>
+                <p className="mt-3 text-[15px] leading-relaxed">{review.text}</p>
+                {(review.origin || review.size) && (
+                  <p className="mt-3 text-xs text-muted">
+                    Verified buyer
+                    {review.size ? ` · Size ${review.size}` : ''}
+                  </p>
+                )}
               </li>
             ))}
           </ul>
