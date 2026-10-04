@@ -8,6 +8,9 @@ export const metadata: Metadata = {
   alternates: { canonical: '/new-in' },
 };
 
+// Always render from live Firestore: never serve a stale pre-built copy of the catalog.
+export const dynamic = 'force-dynamic';
+
 export default async function NewInPage({ searchParams }: PageProps<'/new-in'>) {
   return (
     <DepartmentListing
