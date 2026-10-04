@@ -80,7 +80,7 @@ export function ConfirmationView() {
   }, [order, vendorOrders]);
 
   const shell = (children: ReactNode) => (
-    <div className="mx-auto w-full max-w-[1120px] px-4 py-16 text-center md:px-10 md:py-24">{children}</div>
+    <div className="container-page py-16 text-center md:py-24">{children}</div>
   );
 
   if (!enabled) {
@@ -155,7 +155,7 @@ export function ConfirmationView() {
   const t = order.totals;
 
   return (
-    <div className="mx-auto w-full max-w-[1120px] px-4 pb-20 md:px-10">
+    <div className="container-page pb-20">
       <section className="pt-12 text-center md:pt-20">
         <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-ink" aria-hidden>
           <Check size={20} strokeWidth={1.25} />

@@ -100,16 +100,16 @@ export function CheckoutView() {
   const scrollTop = () => topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   if (!hydrated) {
-    return <div className="mx-auto max-w-[1120px] px-4 py-24 md:px-10"><Spinner label="Loading checkout" /></div>;
+    return <div className="container-page py-24"><Spinner label="Loading checkout" /></div>;
   }
 
   if (placed) {
-    return <div className="mx-auto max-w-[1120px] px-4 py-24 md:px-10"><Spinner label="Confirming your order" /></div>;
+    return <div className="container-page py-24"><Spinner label="Confirming your order" /></div>;
   }
 
   if (lines.length === 0) {
     return (
-      <div className="mx-auto max-w-[1120px] px-4 py-20 md:px-10">
+      <div className="container-page py-20">
         <h1 className="display text-[36px]">Your bag is empty</h1>
         <p className="mt-4 text-sm text-muted">Add a few pieces, then come back to check out.</p>
         <Link href="/" className="btn btn-primary mt-8">Continue shopping</Link>
@@ -240,7 +240,7 @@ export function CheckoutView() {
   );
 
   return (
-    <div ref={topRef} className="mx-auto w-full max-w-[1120px] scroll-mt-4 px-4 pb-20 md:px-10">
+    <div ref={topRef} className="container-page scroll-mt-4 pb-20">
       <MobileSummary total={totals?.total ?? null}>{summary}</MobileSummary>
 
       <div className="grid gap-12 pt-8 md:pt-14 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-[72px]">
