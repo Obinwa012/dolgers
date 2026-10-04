@@ -135,6 +135,8 @@ export interface Product {
   vendorId: string;
   vendorSlug: string;
   vendorName: string;
+  /** The manufacturer/brand (e.g. ROCKBROS). Dolgers is the seller, not the brand. */
+  brand?: string;
   department: Department;
   categoryId: string;
   categoryPath: string[];
@@ -153,11 +155,21 @@ export interface Product {
   related: string[];
   status: ProductStatus;
   reviewNote: string;
+  /** Customer reviews for social proof. */
+  reviews?: ProductReview[];
   /** Featured products sort first under "Featured". */
   featured: boolean;
   publishedAt: Millis | null;
   createdAt: Millis;
   updatedAt: Millis;
+}
+
+/** A customer review, collected from verified buyers. */
+export interface ProductReview {
+  stars: number;
+  text: string;
+  origin?: string;
+  size?: string;
 }
 
 /** `inventory/{sku}`: written by Functions only. */
