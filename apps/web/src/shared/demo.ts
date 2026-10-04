@@ -260,9 +260,9 @@ export function demoStock(): Map<string, number> {
 }
 
 export const demoHome: HomeContent = {
-  announcement: 'Complimentary delivery on orders over $99',
+  announcement: 'Complimentary delivery on every order',
   announcementSlides: [
-    'Easy 30-day returns on every order',
+    'Easy 14-day returns on every order',
     'Discover independent makers, all in one place',
   ],
   hero: {
