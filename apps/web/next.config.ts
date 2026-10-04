@@ -42,6 +42,7 @@ const csp = [
 ].join('; ');
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
   transpilePackages: ['@dolgers/shared'],
   poweredByHeader: false,
   env: firebaseWebEnv(),
