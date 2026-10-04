@@ -26,12 +26,8 @@ env:
     availability: [BUILD, RUNTIME]
 
   # Typesense: host plus a search-only key, used by the website server to read the index.
-  - variable: TYPESENSE_HOST
-    value: REPLACE_ME.a1.typesense.net
-    availability: [RUNTIME]
-  - variable: TYPESENSE_SEARCH_KEY
-    secret: TYPESENSE_SEARCH_KEY
-    availability: [RUNTIME]
+  # (Not configured yet — the site falls back to in-memory search. Add TYPESENSE_HOST and
+  # TYPESENSE_SEARCH_KEY when Typesense is set up; see DEPLOY.md.)
 
   # Shared with Cloud Functions so only they can trigger a cache refresh.
   - variable: REVALIDATE_SECRET
