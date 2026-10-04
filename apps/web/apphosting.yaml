@@ -1,5 +1,6 @@
 # Firebase App Hosting configuration for the DOLGERS website (this folder is the backend's root
 # directory). Secrets are references to Cloud Secret Manager; see DEPLOY.md.
+# Build 3: REVALIDATE_SECRET access granted to App Hosting service account.
 runConfig:
   minInstances: 0     # raise to 1 once traffic justifies avoiding cold starts
   maxInstances: 20    # hard cap: protects the bill from traffic floods
