@@ -21,7 +21,6 @@ import { parse, rateLimit, requireAuth, requireVendor, type Caller } from './lib
 import { queueMail } from './lib/mail.ts';
 import { payVendor, refundVendorOrder, updateOrderShippingStatus } from './lib/orders.ts';
 import { ENFORCE_APP_CHECK, REGION, SITE_URL, STRIPE_SECRET_KEY } from './lib/params.ts';
-import { revalidate } from './lib/revalidate.ts';
 import { stripe } from './lib/stripe.ts';
 
 type VendorCaller = Caller & { vendorId: string };
@@ -133,7 +132,6 @@ async function updateProfile(caller: VendorCaller, data: Extract<ReturnType<type
     facts: { ...data.facts, dispatchDays: [Math.min(...data.facts.dispatchDays), Math.max(...data.facts.dispatchDays)] },
     updatedAt: now(),
   });
-  await revalidate([`vendor:${caller.vendorId}`]);
   return { ok: true };
 }
 

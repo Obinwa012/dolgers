@@ -232,7 +232,8 @@ export const demoProducts: Product[] = specs.map((spec) => {
     status: 'live',
     reviewNote: '',
     featured: spec.featured ?? false,
-    publishedAt: T0 + (90 - spec.ageDays) * DAY,
+    // Relative to today so the demo always has a fresh "New in" edit.
+    publishedAt: Date.now() - spec.ageDays * DAY,
     createdAt: T0,
     updatedAt: T0,
   };

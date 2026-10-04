@@ -7,6 +7,7 @@ import {
   DEFAULT_COMMISSION_BPS,
   formatMoney,
   vendorSettlement,
+  type Address,
   type InventoryRecord,
   type Order,
   type VendorOrder,
@@ -82,6 +83,15 @@ export async function finalizePaidOrder(pi: Stripe.PaymentIntent): Promise<void>
   const ref = db.collection('orders').doc(orderId);
   const charge = typeof pi.latest_charge === 'string' ? await stripe().charges.retrieve(pi.latest_charge) : pi.latest_charge;
   const card = charge?.payment_method_details?.card;
+  const billed = charge?.billing_details?.address;
+  const billingAddress: Address | null = billed?.line1 && billed.postal_code
+    ? {
+        firstName: (charge?.billing_details?.name ?? '').split(' ')[0] ?? '',
+        lastName: (charge?.billing_details?.name ?? '').split(' ').slice(1).join(' '),
+        line1: billed.line1, line2: billed.line2 ?? '', city: billed.city ?? '', state: billed.state ?? '',
+        postalCode: billed.postal_code, country: 'US', phone: charge?.billing_details?.phone ?? '',
+      }
+    : null;
   const paymentMethodSummary = card ? `${(card.brand ?? 'card').toUpperCase()} ending ${card.last4}` : (charge?.payment_method_details?.type ?? null);
 
   const outcome = await db.runTransaction(async (tx) => {
@@ -171,6 +181,8 @@ export async function finalizePaidOrder(pi: Stripe.PaymentIntent): Promise<void>
       reservationHeld: false,
       chargeId: charge?.id ?? null,
       paymentMethodSummary,
+      // Taken from the payment, where the shopper confirms it; may match the shipping address.
+      ...(billingAddress ? { billingAddress } : {}),
     });
     queueMail(order.email, `Your DOLGERS order ${order.number} is confirmed`,
       `Thank you. Your order ${order.number} is confirmed, ${formatMoney(order.totals.total)} paid.\n` +

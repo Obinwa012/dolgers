@@ -47,7 +47,12 @@ export const createCheckoutSchema = z.object({
 export type CreateCheckoutInput = z.infer<typeof createCheckoutSchema>;
 
 export const imageSchema = z.object({
-  url: z.string().max(1000).refine((u) => u.startsWith('https://') || u.startsWith('/'), 'Image must be https'),
+  // '' is a placeholder (tone only); http is allowed for the local Storage emulator alone.
+  // Functions also check that vendors only reference their own uploads.
+  url: z.string().max(1000).refine(
+    (u) => u === '' || u.startsWith('https://') || u.startsWith('/') || /^http:\/\/(127\.0\.0\.1|localhost):9199\//.test(u),
+    'Image must be https',
+  ),
   alt: text(200).default(''),
   width: z.number().int().positive().optional(),
   height: z.number().int().positive().optional(),

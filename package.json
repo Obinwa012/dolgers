@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "dev": "npm run dev -w @dolgers/web",
-    "build": "npm run build -w @dolgers/shared && npm run build -w @dolgers/web && npm run build -w @dolgers/functions",
+    "build": "npm run build -w @dolgers/web && npm run build -w @dolgers/functions",
     "lint": "npm run lint -w @dolgers/web",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test -w @dolgers/shared && npm run test -w @dolgers/functions",

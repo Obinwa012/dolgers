@@ -28,12 +28,12 @@ const isDev = process.env.NODE_ENV === 'development';
 // could load or send.
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''} https://js.stripe.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://apis.google.com`,
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''} https://js.stripe.com https://*.js.stripe.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://apis.google.com`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://firebasestorage.googleapis.com https://storage.googleapis.com https://*.stripe.com https://lh3.googleusercontent.com http://127.0.0.1:9199 http://localhost:9199",
   "font-src 'self' data:",
   "connect-src 'self' https://*.googleapis.com https://*.cloudfunctions.net https://*.run.app https://api.stripe.com https://*.typesense.net https://www.google.com/recaptcha/ http://127.0.0.1:* http://localhost:* ws://localhost:* ws://127.0.0.1:*",
-  "frame-src https://js.stripe.com https://hooks.stripe.com https://www.google.com/recaptcha/ https://recaptcha.google.com https://*.firebaseapp.com",
+  "frame-src https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com https://www.google.com/recaptcha/ https://recaptcha.google.com https://*.firebaseapp.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

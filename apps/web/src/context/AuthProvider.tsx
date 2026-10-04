@@ -5,6 +5,8 @@ import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
   linkWithCredential,
+  linkWithPopup,
+  signInWithCredential,
   onIdTokenChanged,
   sendPasswordResetEmail,
   signInAnonymously,
@@ -14,7 +16,8 @@ import {
   updateProfile,
   type User,
 } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { FirebaseError } from 'firebase/app';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { DolgersClaims, UserProfile } from '@dolgers/shared';
 import { firebaseEnabled } from '@/lib/env';
@@ -97,9 +100,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = useCallback(async () => {
     const a = auth();
-    const { user: u } = await signInWithPopup(a, new GoogleAuthProvider());
-    const [firstName = '', ...rest] = (u.displayName ?? '').split(' ');
-    await writeProfile(u, { firstName, lastName: rest.join(' '), marketingOptIn: false }).catch(() => undefined);
+    const provider = new GoogleAuthProvider();
+    let u: User;
+    if (a.currentUser?.isAnonymous) {
+      // Keep a guest's orders: link Google to the guest session. If that Google account already
+      // has a DOLGERS account, sign into it instead.
+      try {
+        u = (await linkWithPopup(a.currentUser, provider)).user;
+      } catch (err) {
+        const credential = err instanceof FirebaseError ? GoogleAuthProvider.credentialFromError(err) : null;
+        if (!credential || (err as FirebaseError).code !== 'auth/credential-already-in-use') throw err;
+        u = (await signInWithCredential(a, credential)).user;
+      }
+    } else {
+      u = (await signInWithPopup(a, provider)).user;
+    }
+    const fb = firebase()!;
+    if (!(await getDoc(doc(fb.db, 'users', u.uid))).exists()) {
+      const [firstName = '', ...rest] = (u.displayName ?? '').split(' ');
+      await writeProfile(u, { firstName: firstName.slice(0, 60), lastName: rest.join(' ').slice(0, 60), marketingOptIn: false });
+    }
+    await u.getIdToken(true);
   }, []);
 
   const resetPassword = useCallback(async (email: string) => {

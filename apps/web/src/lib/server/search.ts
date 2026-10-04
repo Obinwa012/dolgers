@@ -8,7 +8,7 @@ import {
   type SearchResult,
   type SortKey,
 } from '@dolgers/shared';
-import { getAllLiveProducts } from './catalog';
+import { getAllLiveProducts, getInStockSkus } from './catalog';
 
 const host = process.env.TYPESENSE_HOST;
 const key = process.env.TYPESENSE_SEARCH_KEY;
@@ -89,7 +89,9 @@ async function typesenseSearch(q: SearchQuery): Promise<SearchResult> {
 /** Same behaviour as the Typesense query, over the cached catalog. Fine for a few thousand products. */
 async function memorySearch(q: SearchQuery): Promise<SearchResult> {
   const t = Date.now();
-  const all = (await getAllLiveProducts()).map((p) => toSearchDoc(p, p.variants.map((v) => v.size), t));
+  const [products, skus] = await Promise.all([getAllLiveProducts(), getInStockSkus()]);
+  const inStock = new Set(skus);
+  const all = products.map((p) => toSearchDoc(p, p.variants.filter((v) => inStock.has(v.sku)).map((v) => v.size), t));
   const words = q.q.toLowerCase().split(/\s+/).filter(Boolean);
   const base = all.filter((d) =>
     (!q.categoryId || d.categoryIds.includes(q.categoryId)) &&

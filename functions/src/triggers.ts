@@ -20,7 +20,9 @@ export const onProductWritten = onDocumentWritten(
     const product = after ?? before;
     if (!product) return;
     await syncProduct(event.params.productId);
-    await revalidate([`product:${product.id}`, `vendor:${product.vendorId}`, 'catalog']);
+    // The website caches pages by slug, so tags use slugs (old and new, if a slug changed).
+    const slugs = new Set([before?.slug, after?.slug].filter(Boolean));
+    await revalidate([...[...slugs].map((s) => `product:${s}`), `vendor:${product.vendorSlug}`, 'catalog']);
     if (before?.status !== after?.status && (before?.status === 'live' || after?.status === 'live')) {
       const count = await db.collection('products').where('vendorId', '==', product.vendorId).where('status', '==', 'live').count().get();
       await db.collection('vendors').doc(product.vendorId).update({ productCount: count.data().count });
@@ -30,7 +32,7 @@ export const onProductWritten = onDocumentWritten(
 
 /** Re-indexes a product only when a size flips between in stock and sold out. */
 export const onInventoryWritten = onDocumentWritten(
-  { ...triggerOpts, document: 'inventory/{sku}', secrets: [TYPESENSE_ADMIN_KEY] },
+  { ...triggerOpts, document: 'inventory/{sku}', secrets: [TYPESENSE_ADMIN_KEY, REVALIDATE_SECRET] },
   async (event) => {
     const before = event.data?.before.data() as InventoryRecord | undefined;
     const after = event.data?.after.data() as InventoryRecord | undefined;
@@ -38,6 +40,7 @@ export const onInventoryWritten = onDocumentWritten(
     if (avail(before) === avail(after)) return;
     const productId = (after ?? before)!.productId;
     await syncProduct(productId);
+    await revalidate(['stock']);
   },
 );
 
@@ -61,7 +64,9 @@ export const onVendorWritten = onDocumentWritten(
         last = page.docs[page.docs.length - 1];
       }
     }
-    await revalidate([`vendor:${after.id}`]);
+    const slugs = new Set([before?.slug, after.slug].filter(Boolean));
+    const listingChanged = !before || before.name !== after.name || before.slug !== after.slug || before.status !== after.status;
+    await revalidate([...[...slugs].map((s) => `vendor:${s}`), ...(listingChanged ? ['catalog'] : [])]);
   },
 );
 

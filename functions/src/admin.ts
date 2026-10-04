@@ -171,7 +171,6 @@ async function updateVendor(data: Data<'updateVendor'>) {
         more = live.size === 400;
       }
     }
-    await revalidate([`vendor:${data.vendorId}`, 'catalog']);
   }
   return { ok: true };
 }

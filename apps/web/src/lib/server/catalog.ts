@@ -120,6 +120,21 @@ export function inCategory(p: Product, categoryId: string): boolean {
   return categoryIdsFromPath(p.categoryPath).includes(categoryId);
 }
 
+/**
+ * SKUs with stock to sell, for the in-memory search fallback (Typesense keeps its own copy).
+ * Cached briefly; the product page re-checks live stock before anything is added to the bag.
+ */
+export const getInStockSkus = unstable_cache(
+  async (): Promise<string[]> => {
+    const db = serverDb();
+    if (!db) return [...demoStock()].filter(([, n]) => n > 0).map(([sku]) => sku);
+    const snap = await db.collection('inventory').select('onHand', 'reserved').get();
+    return snap.docs.filter((d) => (d.get('onHand') ?? 0) - (d.get('reserved') ?? 0) > 0).map((d) => d.id);
+  },
+  ['in-stock-skus'],
+  { tags: ['stock'], revalidate: 120 },
+);
+
 /** Units available to sell per size. Never cached: stock changes with every sale. */
 export async function getAvailability(product: Product): Promise<Record<string, boolean>> {
   const db = serverDb();
