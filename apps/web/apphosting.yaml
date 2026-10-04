@@ -17,7 +17,7 @@ env:
 
   # Stripe publishable key (public by design).
   - variable: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-    value: pk_live_REPLACE_ME
+    value: pk_live_51UMszJAFk9pSHq0OxVlLB2qR3bfSlJEKE26Ul2JtAtHsNmXbvaD5LjWKwSjLGiU3GOMccBStuPh0MYj3PaHjbkYS00eKqhByeL
     availability: [BUILD, RUNTIME]
 
   # reCAPTCHA Enterprise site key for Firebase App Check (public by design).
