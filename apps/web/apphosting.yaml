@@ -29,3 +29,4 @@ env:
   # (Not configured yet — the site falls back to in-memory search. Add TYPESENSE_HOST and
   # TYPESENSE_SEARCH_KEY when Typesense is set up; see DEPLOY.md.)
 # Note: REVALIDATE_SECRET removed — needs proper App Hosting secret setup via console.
+
