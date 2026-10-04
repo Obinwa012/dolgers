@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { SIZE_SYSTEM_LABEL, formatMoney, type Product } from '@dolgers/shared';
 import { useBag } from '@/context/BagProvider';
 import { useWishlist } from '@/context/WishlistProvider';
+import { SizeGuideModal } from './SizeGuideModal';
 
 export type BuyBoxProduct = Pick<Product, 'id' | 'slug' | 'title' | 'vendorId' | 'vendorName' | 'colour' | 'sizeSystem' | 'variants' | 'fitNote' | 'priceMin'> & {
   image: Product['images'][number] | null;
@@ -17,6 +18,7 @@ const sizeName = (system: Product['sizeSystem'], size: string) => (system === 'e
 export function ProductBuyBox({ product }: { product: BuyBoxProduct }) {
   const { add } = useBag();
   const { has, toggle } = useWishlist();
+  const [showSizeGuide, setShowSizeGuide] = useState(false);
   const single = product.variants.length === 1 ? product.variants[0].size : null;
   const [size, setSize] = useState<string | null>(single);
   const [stock, setStock] = useState<Record<string, boolean> | null>(null);
@@ -91,7 +93,13 @@ export function ProductBuyBox({ product }: { product: BuyBoxProduct }) {
         <fieldset className="mt-7">
           <div className="mb-3 flex items-baseline justify-between">
             <legend className="label float-left">{SIZE_SYSTEM_LABEL[product.sizeSystem]}</legend>
-            <Link href={`/help/size-guide#${product.sizeSystem}`} className="text-xs underline underline-offset-4 hover:text-muted">Size guide</Link>
+            <button
+              type="button"
+              onClick={() => setShowSizeGuide(true)}
+              className="text-xs underline underline-offset-4 hover:text-muted"
+            >
+              Size guide
+            </button>
           </div>
           <div className="clear-both grid grid-cols-[repeat(auto-fill,minmax(60px,1fr))] gap-1.5" role="radiogroup" aria-label={SIZE_SYSTEM_LABEL[product.sizeSystem]}>
             {product.variants.map((v) => {
@@ -159,6 +167,14 @@ export function ProductBuyBox({ product }: { product: BuyBoxProduct }) {
           </div>
         ) : null}
       </div>
+
+      {showSizeGuide && (
+        <SizeGuideModal
+          sizeSystem={product.sizeSystem}
+          fitNote={product.fitNote}
+          onClose={() => setShowSizeGuide(false)}
+        />
+      )}
     </div>
   );
 }
