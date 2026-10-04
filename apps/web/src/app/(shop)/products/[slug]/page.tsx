@@ -10,6 +10,7 @@ import { nowMs, productToCard } from '@/components/shop/cards';
 import { Paragraphs } from '@/components/shop/Paragraphs';
 import { ProductBuyBox } from '@/components/shop/ProductBuyBox';
 import { ProductGallery } from '@/components/shop/ProductGallery';
+import { SizeGuideButton } from '@/components/shop/SizeGuideButton';
 import { getCategories, getProduct, getProductsByIds, getVendor } from '@/lib/server/catalog';
 import { publicEnv } from '@/lib/env';
 
@@ -157,7 +158,7 @@ export default async function ProductPage({ params }: PageProps<'/products/[slug
               <p>
                 {SIZING_NOTE[product.sizeSystem]}{' '}
                 {product.sizeSystem !== 'one-size' ? (
-                  <Link href={`/help/size-guide#${product.sizeSystem}`} className="underline underline-offset-4">See the size guide</Link>
+                  <SizeGuideButton sizeSystem={product.sizeSystem} fitNote={product.fitNote} />
                 ) : null}
               </p>
             </Accordion>
