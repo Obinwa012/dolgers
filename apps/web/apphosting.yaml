@@ -1,0 +1,39 @@
+# Firebase App Hosting configuration for the DOLGERS website (this folder is the backend's root
+# directory). Secrets are references to Cloud Secret Manager; see DEPLOY.md.
+runConfig:
+  minInstances: 0     # raise to 1 once traffic justifies avoiding cold starts
+  maxInstances: 20    # hard cap: protects the bill from traffic floods
+  concurrency: 80
+  cpu: 1
+  memoryMiB: 1024
+
+env:
+  - variable: SITE_URL
+    value: https://dolgers.com
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_SITE_URL
+    value: https://dolgers.com
+    availability: [BUILD, RUNTIME]
+
+  # Stripe publishable key (public by design).
+  - variable: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+    value: pk_live_REPLACE_ME
+    availability: [BUILD, RUNTIME]
+
+  # reCAPTCHA Enterprise site key for Firebase App Check (public by design).
+  - variable: NEXT_PUBLIC_RECAPTCHA_SITE_KEY
+    value: REPLACE_ME
+    availability: [BUILD, RUNTIME]
+
+  # Typesense: host plus a search-only key, used by the website server to read the index.
+  - variable: TYPESENSE_HOST
+    value: REPLACE_ME.a1.typesense.net
+    availability: [RUNTIME]
+  - variable: TYPESENSE_SEARCH_KEY
+    secret: TYPESENSE_SEARCH_KEY
+    availability: [RUNTIME]
+
+  # Shared with Cloud Functions so only they can trigger a cache refresh.
+  - variable: REVALIDATE_SECRET
+    secret: REVALIDATE_SECRET
+    availability: [RUNTIME]

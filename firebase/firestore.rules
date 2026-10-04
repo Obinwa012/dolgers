@@ -1,0 +1,134 @@
+rules_version = '2';
+
+// DOLGERS security rules.
+// The rule of the house: clients may READ what is theirs (or public) and may WRITE only their own
+// profile, addresses, wishlist and follows. Everything involving money, stock, roles or other
+// people's data is written by Cloud Functions through the Admin SDK, which bypasses these rules
+// and validates input itself. Roles come from custom claims that only Functions can set.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && request.auth.token.admin == true; }
+    function isVendor(vendorId) { return signedIn() && request.auth.token.vendorId == vendorId; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+    function str(v, max) { return v is string && v.size() <= max; }
+
+    // ---- Public catalog ----------------------------------------------------------------------
+    match /categories/{id} { allow read: if true; allow write: if false; }
+    match /content/{id}    { allow read: if true; allow write: if false; }
+
+    match /vendors/{vendorId} {
+      allow read: if resource.data.status == 'active' || isVendor(vendorId) || isAdmin();
+      allow write: if false;
+
+      match /members/{uid} {
+        allow read: if isVendor(vendorId) || isAdmin();
+        allow write: if false;
+      }
+    }
+
+    // Stripe status and commission: the vendor and admins can see it, nobody writes it.
+    match /vendorPrivate/{vendorId} {
+      allow read: if isVendor(vendorId) || isAdmin();
+      allow write: if false;
+    }
+
+    match /vendorApplications/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if false;
+    }
+
+    // Shoppers see live products; a vendor also sees its own drafts; admins see everything.
+    match /products/{productId} {
+      allow read: if resource.data.status == 'live'
+                  || isVendor(resource.data.vendorId)
+                  || isAdmin();
+      allow write: if false;
+    }
+
+    // Exact stock counts are private to the vendor. Shoppers get availability from the website.
+    match /inventory/{sku} {
+      allow read: if isVendor(resource.data.vendorId) || isAdmin();
+      allow write: if false;
+    }
+
+    // ---- Shopper data ------------------------------------------------------------------------
+    match /users/{uid} {
+      function validProfile() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['uid', 'email', 'firstName', 'lastName', 'marketingOptIn', 'createdAt'])
+          && d.uid == uid
+          && str(d.email, 200)
+          && str(d.firstName, 60)
+          && str(d.lastName, 60)
+          && d.marketingOptIn is bool
+          && d.createdAt is int;
+      }
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isOwner(uid) && validProfile();
+      allow update: if isOwner(uid) && validProfile() && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if false;
+
+      match /addresses/{addressId} {
+        function validAddress() {
+          let d = request.resource.data;
+          return d.keys().hasOnly(['id', 'firstName', 'lastName', 'line1', 'line2', 'city', 'state', 'postalCode', 'country', 'phone', 'isDefault'])
+            && d.id == addressId
+            && str(d.firstName, 60) && str(d.lastName, 60)
+            && str(d.line1, 120) && str(d.line2, 120) && str(d.city, 80)
+            && d.state is string && d.state.matches('^[A-Z]{2}$')
+            && d.postalCode is string && d.postalCode.matches('^[0-9]{5}(-[0-9]{4})?$')
+            && d.country == 'US'
+            && str(d.phone, 25)
+            && d.isDefault is bool;
+        }
+        allow read, delete: if isOwner(uid);
+        allow create, update: if isOwner(uid) && validAddress();
+      }
+
+      match /wishlist/{productId} {
+        allow read, delete: if isOwner(uid);
+        allow create: if isOwner(uid)
+          && request.resource.data.keys().hasOnly(['productId', 'addedAt'])
+          && request.resource.data.productId == productId
+          && request.resource.data.addedAt == request.time;
+      }
+
+      match /follows/{vendorId} {
+        allow read, delete: if isOwner(uid);
+        allow create: if isOwner(uid)
+          && request.resource.data.keys().hasOnly(['vendorId', 'followedAt'])
+          && request.resource.data.vendorId == vendorId
+          && request.resource.data.followedAt == request.time;
+      }
+    }
+
+    // ---- Orders and money: read-only from the client -----------------------------------------
+    match /orders/{orderId} {
+      allow read: if (signedIn() && resource.data.uid == request.auth.uid) || isAdmin();
+      allow write: if false;
+    }
+
+    match /vendorOrders/{id} {
+      allow read: if (signedIn() && resource.data.uid == request.auth.uid)
+                  || isVendor(resource.data.vendorId)
+                  || isAdmin();
+      allow write: if false;
+    }
+
+    match /returns/{id} {
+      allow read: if (signedIn() && resource.data.uid == request.auth.uid)
+                  || isVendor(resource.data.vendorId)
+                  || isAdmin();
+      allow write: if false;
+    }
+
+    match /ledger/{id}      { allow read: if isAdmin(); allow write: if false; }
+    match /promoCodes/{id}  { allow read: if isAdmin(); allow write: if false; }
+    match /auditLog/{id}    { allow read: if isAdmin(); allow write: if false; }
+
+    // Everything else (rate limits, Stripe event log, mail queue, subscribers) is server-only.
+    match /{document=**} { allow read, write: if false; }
+  }
+}

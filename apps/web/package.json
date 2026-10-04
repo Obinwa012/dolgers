@@ -1,0 +1,36 @@
+{
+  "name": "@dolgers/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "next typegen && tsc --noEmit"
+  },
+  "dependencies": {
+    "@stripe/react-stripe-js": "^7.0.0",
+    "@stripe/stripe-js": "^10.0.0",
+    "firebase": "^12.19.0",
+    "firebase-admin": "^14.5.0",
+    "lucide-react": "^1.52.0",
+    "next": "^16.3.8",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "server-only": "^0.0.1",
+    "typesense": "^3.1.0",
+    "zod": "^4.6.5",
+    "@dolgers/shared": "*"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^26.6.4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.8",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3"
+  }
+}

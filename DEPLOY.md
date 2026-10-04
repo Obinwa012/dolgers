@@ -1,119 +1,92 @@
-# Deploying Dolgers
+# Deploying DOLGERS
 
-Target: **Firebase App Hosting** (runs Next.js server features: API routes, ISR) + Firestore + Auth + Stripe.
-Steps marked 👤 need your accounts; everything else is already configured in this repo.
+Two Firebase projects are expected: `dolgers-staging` and `dolgers-prod` (see `.firebaserc`). Do
+everything on staging first with Stripe **test** keys.
 
-## 0. Try it locally first (no accounts needed)
+## 1. Firebase project
+
+1. Create the project on the **Blaze** plan and set a **budget alert** (Billing → Budgets) before
+   anything else.
+2. Firestore: create the database in **`nam5`** (multi-region US).
+3. Authentication: enable Email/Password (and Google if wanted). Upgrade to **Identity Platform** and
+   turn on **MFA**; require it for admin accounts.
+4. App Check: register the web app with **reCAPTCHA Enterprise**; note the site key. Enforce App
+   Check for Firestore and Storage once the site is live and verified.
+5. Storage: create the default bucket.
+6. Firestore **TTL policies**: `rateLimits` on field `expiresAt` (keeps the collection small).
+7. Install the **Trigger Email** extension (`firebase/firestore-send-email`) watching the `mail`
+   collection, with your SMTP or SendGrid credentials.
+
+## 2. Secrets and settings for Functions
 
 ```bash
-npm install
-npx firebase-tools emulators:start --project demo-dolgers   # Auth + Firestore, UI at :4000
-cp .env.local.example .env.local   # then use the "Local emulators" block at the bottom
-npm run dev
+firebase use dolgers-staging
+firebase functions:secrets:set STRIPE_SECRET_KEY        # sk_test_... / sk_live_...
+firebase functions:secrets:set STRIPE_WEBHOOK_SECRET    # whsec_platform,whsec_connect
+firebase functions:secrets:set TYPESENSE_ADMIN_KEY
+firebase functions:secrets:set REVALIDATE_SECRET        # long random string, same as App Hosting
 ```
-With no `STRIPE_SECRET_KEY`, checkout runs in demo mode (orders saved, no payment).
-`npm test` runs the checkout pricing tests.
 
-## 1. 👤 Firebase project
+Non-secret settings are in `functions/.env` (`SITE_URL`, `TYPESENSE_HOST`, `ENFORCE_APP_CHECK`,
+`STRIPE_TAX_ENABLED`). Use `functions/.env.dolgers-staging` / `.env.dolgers-prod` to override per
+project.
 
-1. Create a project at https://console.firebase.google.com and upgrade to the **Blaze** plan
-   (App Hosting requires it; small stores typically stay within free-tier usage).
-2. **Build → Authentication**: enable *Email/Password* and *Google*.
-3. **Build → Firestore Database**: create it (production mode).
-4. **Project settings → Your apps**: add a **Web app**.
-5. Deploy rules and indexes, then seed the catalog:
+Deploy:
+
+```bash
+firebase deploy --only firestore,storage,functions
+```
+
+## 3. Stripe
+
+1. Enable **Connect** (Express accounts, United States). Set the platform's branding.
+2. Add two webhook endpoints pointing at the `stripeWebhook` function URL:
+   - **Account events:** `payment_intent.succeeded`, `payment_intent.canceled`,
+     `charge.dispute.created`.
+   - **Connected-account events:** `account.updated`.
+   Put both signing secrets in `STRIPE_WEBHOOK_SECRET`, comma-separated.
+3. Optional: Stripe Tax. Register where required, then set `STRIPE_TAX_ENABLED=true`.
+
+## 4. Typesense
+
+Create a Typesense Cloud cluster in a US region. Put the host in `TYPESENSE_HOST` (Functions and
+App Hosting) and the admin key in `TYPESENSE_ADMIN_KEY`. Create a **search-only** key for the
+`products` collection and store it as the App Hosting secret `TYPESENSE_SEARCH_KEY`. After the first
+deploy, run "Rebuild search index" from the admin console.
+
+## 5. Website on App Hosting
+
+1. `firebase apphosting:backends:create --project dolgers-staging`, connect this GitHub repository,
+   root directory **`apps/web`**, live branch `main`, region `us-central1`.
+2. Secrets:
    ```bash
-   npm i -g firebase-tools && firebase login
-   firebase use --add            # pick your project
-   firebase deploy --only firestore:rules,firestore:indexes
-   # Service account key for seeding (keep it out of git; it's in .gitignore):
-   #   Project settings → Service accounts → Generate new private key → save as service-account.json
-   npm run seed
+   firebase apphosting:secrets:set TYPESENSE_SEARCH_KEY
+   firebase apphosting:secrets:set REVALIDATE_SECRET
    ```
-   > Once seeded, Firestore is the catalog of record: the checkout API prices orders from it and the
-   > webhook decrements `stock` there. Edit products in the console (or re-run the seed).
+   and grant the backend access when prompted.
+3. Fill in the `REPLACE_ME` values in `apps/web/apphosting.yaml` (Stripe publishable key, reCAPTCHA
+   site key, Typesense host, site URL).
+4. **Make the website's identity read-only.** In IAM, find the App Hosting backend's service account
+   (`firebase-app-hosting-compute@PROJECT.iam.gserviceaccount.com`), remove broad roles such as
+   Editor, and grant `Cloud Datastore Viewer` plus what App Hosting itself needs (Secret Manager
+   Secret Accessor for its secrets, Logs Writer). The website then cannot write Firestore even if
+   compromised.
+5. Add your domain under App Hosting → Domains.
 
-## 2. 👤 Stripe
+## 6. First admin
 
-1. Get test keys: https://dashboard.stripe.com/test/apikeys
-2. Local testing with real Stripe (test mode):
-   ```bash
-   stripe listen --forward-to localhost:3000/api/stripe/webhook   # prints whsec_...
-   ```
-   Put `STRIPE_SECRET_KEY=sk_test_...` and that `STRIPE_WEBHOOK_SECRET` in `.env.local`, restart
-   `npm run dev`, and pay with card `4242 4242 4242 4242`, any future date, any CVC.
-
-## 3. 👤 App Hosting backend
+Sign up on the site with your own email, then from a trusted machine with project credentials:
 
 ```bash
-firebase apphosting:backends:create --backend dolgers --primary-region us-central1
-```
-Connect your GitHub repo when prompted (root directory `/`, live branch `main`). Every push to `main`
-then builds and rolls out. The backend URL looks like `https://dolgers--<project>.<region>.hosted.app`.
-
-Put that URL in `apphosting.yaml` → `SITE_URL`, then create the secrets:
-
-```bash
-firebase apphosting:secrets:set STRIPE_SECRET_KEY        # paste sk_test_... (sk_live_... later)
-firebase apphosting:secrets:set STRIPE_WEBHOOK_SECRET    # from step 4
-firebase apphosting:secrets:grantaccess STRIPE_SECRET_KEY,STRIPE_WEBHOOK_SECRET --backend dolgers
+node -e "const a=require('firebase-admin');a.initializeApp({projectId:'dolgers-prod'});a.auth().getUserByEmail('YOU@EXAMPLE.COM').then(u=>a.auth().setCustomUserClaims(u.uid,{admin:true})).then(()=>console.log('done'))"
 ```
 
-No Firebase keys to copy: App Hosting injects the web config at build (mapped in `next.config.ts`),
-and the backend's service account already has Admin SDK access for the checkout API.
+Further admins can be added from the admin console.
 
-## 4. 👤 Stripe webhook (production)
+## 7. Before taking real money
 
-Stripe Dashboard → Developers → Webhooks → **Add endpoint**
-- URL: `https://<your-backend-url>/api/stripe/webhook`
-- Events: `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
-  `checkout.session.async_payment_failed`, `checkout.session.expired`, `charge.dispute.created`
-- Copy the signing secret (`whsec_...`) into the `STRIPE_WEBHOOK_SECRET` secret, then push (or
-  roll out from the console) so the backend picks it up.
-
-## 4b. 👤 Marketplace payouts (Stripe Connect)
-
-1. Stripe Dashboard → **Connect** → get started, choose the **platform** model, and enable
-   **Express** accounts. Fill in the platform profile (Stripe reviews it).
-2. Under Connect settings, set your branding and the redirect domains (your backend URL).
-3. Nothing else to configure in code: sellers start onboarding from `/seller` (identity, business and
-   bank checks happen on Stripe), and payouts go out as transfers when they ship.
-4. Make yourself staff: set the custom claim once with the Admin SDK, e.g.
-   `getAuth().setCustomUserClaims("<your uid>", { admin: true })`, then sign out and in. Approve
-   sellers on `/admin`.
-
-> Transfers use `source_transaction`, so the platform and connected accounts must be in the same
-> region (US platform → US sellers). Cross-border sellers need Stripe's "recipient" service agreement.
-
-## 5. 👤 Authorized domains
-
-Authentication → Settings → **Authorized domains**: add the `*.hosted.app` URL and any custom domain,
-or Google sign-in popups will fail there.
-
-## 6. Go-live checklist
-
-- [ ] Place a test-mode order end to end; confirm it shows **Paid** in *My account* and stock dropped.
-- [ ] Swap to live keys (`sk_live_...`) and a live-mode webhook endpoint + secret.
-- [ ] Replace placeholder pages (`src/app/pages/[slug]`): privacy policy, shipping, returns.
-- [ ] Decide on sales tax: not calculated today. Stripe Tax can be enabled on the Checkout Session
-      (`automatic_tax: { enabled: true }`) once your tax registrations are set up.
-- [ ] Custom domain: App Hosting → your backend → Settings → Domains; then update `SITE_URL` and
-      Authorized domains.
-- [ ] Watch for orders with a `needsReview` field (amount mismatch, oversold stock, reused first-order code,
-      card disputes). They're listed on `/admin`.
-- [ ] Replace the placeholder financing message, or remove it, before launch (see README → Marketplace).
-- [ ] Write seller terms (commission, handling times, return obligations, payout reversals) and link them
-      from `/sell`.
-
-## Order lifecycle
-
-```
-cart ──POST /api/checkout──▶ order: pending_payment ──Stripe Checkout──▶ webhook ──▶ paid (stock −qty)
-                                     │                                        │    └─▶ sellerOrders (one per seller)
-                                     │                                        └──▶ payment_failed
-                                     └──── session expires (1 h) ─────────────────▶ canceled
-
-sellerOrder: awaiting_shipment ──seller enters tracking──▶ shipped ──▶ Stripe transfer (net of commission)
-return: requested ──seller──▶ approved (refund + reversal) | rejected ──customer──▶ escalated ──admin──▶ resolved
-```
-Clients can read their own orders but can't create or edit any (see `firestore.rules`).
+- Run a full order on staging with test cards: pay, ship (vendor transfer), refund (transfer
+  reversal), dispute.
+- Confirm the sales-tax plan with an accountant (marketplace facilitator rules).
+- Publish terms, privacy, shipping and returns pages reviewed by a lawyer.
+- Switch keys to live, re-register webhooks in live mode.

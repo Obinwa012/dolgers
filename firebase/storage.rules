@@ -1,0 +1,35 @@
+rules_version = '2';
+
+// Vendors upload originals to their own folder. A Cloud Function re-encodes every upload (which
+// strips metadata and anything hidden in the file) and writes the public sizes under /public,
+// which only Functions can write.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /uploads/vendors/{vendorId}/{fileName} {
+      allow create: if request.auth != null
+        && request.auth.token.vendorId == vendorId
+        && request.resource.size < 15 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp)')
+        && fileName.matches('^[A-Za-z0-9_-]{8,64}\\.(jpg|jpeg|png|webp)$');
+      allow read, update, delete: if false;
+    }
+
+    match /uploads/admin/{fileName} {
+      allow create: if request.auth != null
+        && request.auth.token.admin == true
+        && request.resource.size < 15 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp)')
+        && fileName.matches('^[A-Za-z0-9_-]{8,64}\\.(jpg|jpeg|png|webp)$');
+      allow read, update, delete: if false;
+    }
+
+    match /public/{allPaths=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
