@@ -21,7 +21,7 @@ export const SIZE_SYSTEM_LABEL: Record<SizeSystem, string> = {
 };
 
 export const DELIVERY: Record<DeliveryMethod, { label: string; detail: string; price: number }> = {
-  standard: { label: 'Standard', detail: '3–6 working days from each maker', price: 0 },
+  standard: { label: 'Standard', detail: '4–11 days, tracked', price: 0 },
   express: { label: 'Express', detail: '1–2 working days, tracked', price: 2500 },
 };
 
@@ -31,7 +31,7 @@ export const DEFAULT_COMMISSION_BPS = 1500;
 export const RESERVATION_MINUTES = 30;
 /** Products published within this window carry the NEW label. */
 export const NEW_WINDOW_DAYS = 30;
-export const RETURN_WINDOW_DAYS = 30;
+export const RETURN_WINDOW_DAYS = 14;
 export const MAX_CART_LINES = 50;
 export const MAX_LINE_QUANTITY = 10;
 
