@@ -3,11 +3,13 @@
 import { useRef, useState } from 'react';
 import type { ProductImage as Img } from '@dolgers/shared';
 import { ProductImage, isDarkTone } from '@/components/ProductImage';
+import { PhotoViewer } from './PhotoViewer';
 
 /** Desktop: a 2x2 grid of shots. Mobile: a swipeable strip with a counter and dots. */
 export function ProductGallery({ images, title }: { images: Img[]; title: string }) {
   const shots = images.length ? images : [{ url: '', alt: title, tone: 'stone' }];
   const [index, setIndex] = useState(0);
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const strip = useRef<HTMLDivElement>(null);
 
   const onScroll = () => {
@@ -29,7 +31,13 @@ export function ProductGallery({ images, title }: { images: Img[]; title: string
         >
           {shots.map((img, i) => (
             <div key={i} className="w-full shrink-0 snap-start" aria-roledescription="slide" aria-label={`${i + 1} of ${shots.length}`}>
-              <ProductImage image={img} sizes="100vw" priority={i === 0} className="aspect-[4/5] w-full" />
+              <button
+                onClick={() => setViewerIndex(i)}
+                className="block w-full cursor-zoom-in"
+                aria-label={`View photo ${i + 1} fullscreen`}
+              >
+                <ProductImage image={img} sizes="100vw" priority={i < 2} className="aspect-[4/5] w-full" />
+              </button>
             </div>
           ))}
         </div>
@@ -58,9 +66,24 @@ export function ProductGallery({ images, title }: { images: Img[]; title: string
 
       <div className="hidden grid-cols-2 gap-2 md:grid">
         {shots.map((img, i) => (
-          <ProductImage key={i} image={img} sizes="(min-width: 1024px) 30vw, 45vw" priority={i < 2} className="aspect-[3/4] w-full" />
+          <button
+            key={i}
+            onClick={() => setViewerIndex(i)}
+            className="cursor-zoom-in"
+            aria-label={`View photo ${i + 1} fullscreen`}
+          >
+            <ProductImage image={img} sizes="(min-width: 1024px) 30vw, 45vw" priority={i < 2} className="aspect-[3/4] w-full" />
+          </button>
         ))}
       </div>
+
+      {viewerIndex !== null && (
+        <PhotoViewer
+          images={shots}
+          initialIndex={viewerIndex}
+          onClose={() => setViewerIndex(null)}
+        />
+      )}
     </>
   );
 }
