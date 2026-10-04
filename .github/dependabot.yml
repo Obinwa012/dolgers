@@ -4,6 +4,10 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # eslint-config-next's React plugin supports eslint 9 only; revisit when it supports 10.
+      - dependency-name: eslint
+        update-types: [version-update:semver-major]
     groups:
       minor-and-patch:
         update-types: [minor, patch]
