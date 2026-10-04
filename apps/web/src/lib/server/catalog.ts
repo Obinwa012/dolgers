@@ -84,7 +84,8 @@ export function getProduct(slug: string): Promise<Product | null> {
       return p && p.status === 'live' ? p : null;
     },
     ['product', slug],
-    { tags: [`product:${slug}`], revalidate: HOUR },
+    // Short TTL: product pages are force-dynamic and must reflect Firestore within a minute.
+    { tags: [`product:${slug}`], revalidate: 60 },
   )();
 }
 
@@ -104,7 +105,8 @@ export const getAllLiveProducts = unstable_cache(
     return snap.docs.map((d) => d.data() as Product);
   },
   ['all-live-products'],
-  { tags: ['catalog'], revalidate: 600 },
+  // Short TTL: listing pages are force-dynamic and must reflect Firestore within a minute.
+  { tags: ['catalog'], revalidate: 60 },
 );
 
 export async function getNewArrivals(limit = 8): Promise<Product[]> {
