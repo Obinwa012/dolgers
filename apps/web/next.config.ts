@@ -43,6 +43,10 @@ const csp = [
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  // Disable Turbopack for App Hosting compatibility (adapter expects webpack standalone output)
+  experimental: {
+    turbo: false,
+  },
   transpilePackages: ['@dolgers/shared'],
   poweredByHeader: false,
   env: firebaseWebEnv(),
