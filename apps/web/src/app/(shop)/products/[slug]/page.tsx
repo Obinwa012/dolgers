@@ -38,7 +38,7 @@ const SIZING_NOTE: Record<SizeSystem, string> = {
 
 function dispatchText(vendor: Vendor | null): string {
   const d = vendor?.facts.dispatchDays;
-  if (!d) return 'Ships from our US warehouse.';
+  if (!d) return 'Ships from within the US.';
   return d[0] === d[1] ? `Ships in ${d[0]} working ${d[0] === 1 ? 'day' : 'days'}.` : `Ships in ${d[0]}–${d[1]} working days.`;
 }
 
