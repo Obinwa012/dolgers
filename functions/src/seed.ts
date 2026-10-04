@@ -22,6 +22,7 @@ if (!projectId) throw new Error('Pass --project <id> with --yes-real-project');
 
 initializeApp({ projectId });
 const db = getFirestore();
+db.settings({ ignoreUndefinedProperties: true });
 const auth = getAuth();
 
 async function main() {

@@ -11,13 +11,11 @@ next-env.d.ts
 !apps/web/.env.example
 !functions/.env
 !functions/.env.local
+!functions/.env.dolgers-*
 .secret.local
 service-account*.json
 .firebase/
 .emulator-data/
-firebase-debug.log
-firestore-debug.log
-ui-debug.log
-storage-debug.log
+*-debug.log
 .DS_Store
 coverage/
