@@ -108,13 +108,13 @@ export default async function ProductPage({ params }: PageProps<'/products/[slug
           )}
           <h1 className="display mt-3 text-[34px] md:text-[40px]">{product.title}</h1>
 
-          {product.rating != null && product.reviewCount != null ? (
+          {product.rating != null ? (
             <p className="mt-3 text-sm">
               <span className="text-amber-400" aria-label={`${product.rating} out of 5 stars`}>
                 {'★'.repeat(Math.round(product.rating))}
               </span>
               <span className="ml-2 text-muted">
-                {product.rating.toFixed(1)} from {product.reviewCount} reviews
+                {product.rating.toFixed(1)}
               </span>
             </p>
           ) : null}
