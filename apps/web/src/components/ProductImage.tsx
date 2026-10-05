@@ -33,7 +33,7 @@ export function ProductImage({
   showLabel?: boolean;
 }) {
   if (image?.url) {
-    // AliExpress CDN images: skip Next.js optimization (slow origin), load directly.
+    // Supplier CDN images: skip Next.js optimization (slow origin), load directly.
     const unoptimized = image.url.includes('alicdn.com');
     return (
       <div className={`relative overflow-hidden bg-stone ${className}`}>
