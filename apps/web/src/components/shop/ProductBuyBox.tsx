@@ -77,7 +77,10 @@ export function ProductBuyBox({ product }: { product: BuyBoxProduct }) {
 
   return (
     <div>
-      <div className="border-t border-line pt-6">
+      <p className="text-lg font-medium" data-testid="variant-price">
+        {formatMoney(price)}
+      </p>
+      <div className="border-t border-line pt-6 mt-6">
         <p className="flex items-baseline gap-3">
           <span className="label">Colour</span>
           <span className="text-[13px] text-muted">{product.colour.name}</span>
