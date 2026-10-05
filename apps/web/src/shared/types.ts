@@ -174,7 +174,7 @@ export interface ProductReview {
   size?: string;
 }
 
-/** Freight data from the AliExpress API vetting. */
+/** Freight data from supplier API vetting. */
 export interface ProductShipping {
   method: string;
   etaDays: string;
