@@ -2,7 +2,7 @@ import { Truck } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { DELIVERY, RETURN_WINDOW_DAYS, formatMoney, type Product, type SizeSystem, type Vendor } from '@dolgers/shared';
+import { DELIVERY, RETURN_WINDOW_DAYS, type Product, type SizeSystem, type Vendor } from '@dolgers/shared';
 import { ProductCard } from '@/components/ProductCard';
 import { Breadcrumbs, SectionHeading } from '@/components/ui';
 import { Accordion } from '@/components/shop/Accordion';
@@ -89,7 +89,6 @@ export default async function ProductPage({ params }: PageProps<'/products/[slug
   ];
 
   const facts = vendor?.facts;
-  const multiPrice = product.priceMax > product.priceMin;
 
   return (
     <div className="container-page pt-4 md:pt-6">
@@ -108,9 +107,6 @@ export default async function ProductPage({ params }: PageProps<'/products/[slug
             <Link href={`/brands/${product.vendorSlug}`} className="label text-muted hover:text-ink">{product.vendorName}</Link>
           )}
           <h1 className="display mt-3 text-[34px] md:text-[40px]">{product.title}</h1>
-          <p className="mt-4 text-lg font-medium">
-            {multiPrice ? `From ${formatMoney(product.priceMin)}` : formatMoney(product.priceMin)}
-          </p>
 
           <div className="mt-6">
             <ProductBuyBox
