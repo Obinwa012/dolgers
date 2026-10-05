@@ -139,8 +139,6 @@ export interface Product {
   brand?: string;
   /** Overall star rating (e.g. 4.8). From verified buyer reviews. */
   rating?: number;
-  /** Total number of reviews the rating is based on. */
-  reviewCount?: number;
   department: Department;
   categoryId: string;
   categoryPath: string[];
