@@ -13,6 +13,7 @@ export function ShipmentCard({
   estimatedDelivery,
   tracking,
   children,
+  reviewLinks,
 }: {
   vendorName: string;
   status: VendorOrderStatus;
@@ -20,6 +21,8 @@ export function ShipmentCard({
   estimatedDelivery: { from: number; to: number } | null;
   tracking?: Tracking | null;
   children?: ReactNode;
+  /** If provided, show "Write a review" links. {orderId, email} for building URLs. */
+  reviewLinks?: { orderId: string; email: string } | null;
 }) {
   return (
     <article className="border border-line-strong p-5 sm:p-6">
@@ -34,6 +37,14 @@ export function ShipmentCard({
             <div className="min-w-0 flex-1">
               <p className="text-[15px] leading-snug">{l.title}</p>
               <p className="mt-1 text-xs text-muted">{lineMeta(l)}</p>
+              {reviewLinks ? (
+                <a
+                  href={`/products/${l.productSlug}/review?order=${reviewLinks.orderId}&email=${encodeURIComponent(reviewLinks.email)}`}
+                  className="mt-2 inline-block text-xs text-ink underline underline-offset-2 hover:text-muted"
+                >
+                  Write a review
+                </a>
+              ) : null}
             </div>
             <p className="text-sm font-medium">{formatMoney(l.lineTotal)}</p>
           </li>
