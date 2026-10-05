@@ -1,13 +1,9 @@
 import type { Metadata, Viewport } from 'next';
-import { Bodoni_Moda, Jost } from 'next/font/google';
 import { AuthProvider } from '@/context/AuthProvider';
 import { BagProvider } from '@/context/BagProvider';
 import { WishlistProvider } from '@/context/WishlistProvider';
 import { publicEnv } from '@/lib/env';
 import './globals.css';
-
-const bodoni = Bodoni_Moda({ subsets: ['latin'], variable: '--font-bodoni', display: 'swap', weight: ['400', '500'] });
-const jost = Jost({ subsets: ['latin'], variable: '--font-jost', display: 'swap', weight: ['300', '400', '500', '600'] });
 
 export const metadata: Metadata = {
   metadataBase: new URL(publicEnv.siteUrl),
@@ -20,7 +16,21 @@ export const viewport: Viewport = { themeColor: '#0e0e0e' };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-US" className={`${bodoni.variable} ${jost.variable}`}>
+    <html lang="en-US">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500&family=Jost:wght@300;400;500;600&display=swap"
+          rel="stylesheet"
+        />
+        <style>{`
+          :root {
+            --font-bodoni: 'Bodoni Moda', Georgia, serif;
+            --font-jost: 'Jost', system-ui, sans-serif;
+          }
+        `}</style>
+      </head>
       <body className="min-h-screen">
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:bg-paper focus:px-4 focus:py-2">
           Skip to content
