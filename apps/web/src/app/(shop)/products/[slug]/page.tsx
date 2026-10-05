@@ -10,6 +10,7 @@ import { nowMs, productToCard } from '@/components/shop/cards';
 import { Paragraphs } from '@/components/shop/Paragraphs';
 import { ProductBuyBox } from '@/components/shop/ProductBuyBox';
 import { ProductGallery } from '@/components/shop/ProductGallery';
+import { ReviewsPopup } from '@/components/shop/ReviewsPopup';
 import { SizeGuideButton } from '@/components/shop/SizeGuideButton';
 import { getCategories, getProduct, getProductsByIds, getVendor } from '@/lib/server/catalog';
 import { publicEnv } from '@/lib/env';
@@ -108,15 +109,8 @@ export default async function ProductPage({ params }: PageProps<'/products/[slug
           )}
           <h1 className="display mt-3 text-[34px] md:text-[40px]">{product.title}</h1>
 
-          {product.rating != null ? (
-            <p className="mt-3 text-sm">
-              <span className="text-amber-400" aria-label={`${product.rating} out of 5 stars`}>
-                {'★'.repeat(Math.round(product.rating))}
-              </span>
-              <span className="ml-2 text-muted">
-                {product.rating.toFixed(1)}
-              </span>
-            </p>
+          {product.rating != null && product.reviews?.length ? (
+            <ReviewsPopup reviews={product.reviews} rating={product.rating} />
           ) : null}
 
           <div className="mt-6">
@@ -200,29 +194,6 @@ export default async function ProductPage({ params }: PageProps<'/products/[slug
         </section>
       ) : null}
 
-      {product.reviews?.length ? (
-        <section className="mt-20 md:mt-28" aria-label="Customer reviews">
-          <div className="[&_h2]:text-[30px] md:[&_h2]:text-[40px]">
-            <SectionHeading title="What buyers say" />
-          </div>
-          <ul className="grid gap-4 md:grid-cols-2">
-            {product.reviews.map((review, i) => (
-              <li key={i} className="border border-line px-6 py-5">
-                <p className="text-sm tracking-wide" aria-label={`${review.stars} out of 5 stars`}>
-                  {'★'.repeat(review.stars)}{'☆'.repeat(5 - review.stars)}
-                </p>
-                <p className="mt-3 text-[15px] leading-relaxed">{review.text}</p>
-                {(review.origin || review.size) && (
-                  <p className="mt-3 text-xs text-muted">
-                    Verified buyer
-                    {review.size ? ` · Size ${review.size}` : ''}
-                  </p>
-                )}
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
     </div>
   );
 }
