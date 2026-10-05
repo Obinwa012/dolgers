@@ -86,6 +86,8 @@ export function OrderDetailView() {
           {parcels.map((p) => {
             const vo = p.vo;
             const voReturns = vo ? returns.filter((r) => r.vendorOrderId === vo.id) : [];
+            // Show review links if order is shipped (delivery confirmed via tracking)
+            const showReviews = order.status === 'shipped' || order.status === 'partially_shipped' || vo?.status === 'shipped';
             return (
               <ShipmentCard
                 key={p.vendorId}
@@ -94,6 +96,7 @@ export function OrderDetailView() {
                 lines={vo?.lines ?? p.lines}
                 estimatedDelivery={vo?.estimatedDelivery ?? null}
                 tracking={vo?.tracking ?? null}
+                reviewLinks={showReviews ? { orderId: order.id, email: order.email } : null}
               >
                 {voReturns.length ? (
                   <ul className="mt-5 space-y-3 border-t border-line pt-4 text-sm">
