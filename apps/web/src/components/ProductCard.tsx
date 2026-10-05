@@ -27,7 +27,6 @@ export function ProductCard({ product, sizes = '(min-width: 1024px) 25vw, 50vw',
         <h3 className="mt-1 text-[15px] leading-snug">{product.title}</h3>
         <p className="mt-1 text-[15px] font-medium">
           {formatMoney(product.price)}
-          {product.priceMax && product.priceMax > product.price ? ` – ${formatMoney(product.priceMax)}` : ''}
         </p>
       </Link>
       {product.isNew ? (
