@@ -13,11 +13,12 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const categoryId = url.searchParams.get('categoryId') ?? '';
   try {
+    // Note: no orderBy here — equality filter + orderBy on another field needs
+    // a composite Firestore index. We sort in code instead.
     let q: Query = db.collection('staging');
     if (categoryId) q = q.where('categoryId', '==', categoryId);
-    const snap = await q.orderBy('createdAt', 'desc').limit(200).get();
-    return NextResponse.json({
-      products: snap.docs.map((d) => {
+    const snap = await q.limit(400).get();
+    const products = snap.docs.map((d) => {
         const v = d.data() as Record<string, unknown>;
         return {
           aeProductId: v.aeProductId,
@@ -32,9 +33,11 @@ export async function GET(req: Request) {
           shipsFromUSA: !!v.shipsFromUSA,
           stage1Status: v.stage1Status ?? '',
           stage1Note: v.stage1Note ?? '',
+          createdAt: typeof v.createdAt === 'number' ? v.createdAt : 0,
         };
-      }),
-    });
+      });
+    products.sort((a, b) => b.createdAt - a.createdAt);
+    return NextResponse.json({ products: products.slice(0, 200) });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : 'Read failed.' },

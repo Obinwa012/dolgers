@@ -26,13 +26,13 @@ interface StagedOut {
 async function vetOne(
   creds: NonNullable<Awaited<ReturnType<typeof getAeCreds>>>,
   p: SearchProduct,
-): Promise<{ options: FreightOption[]; note: string }> {
+): Promise<{ options: FreightOption[]; note: string; rawKeys: string[]; rawSample: string }> {
   try {
-    const options = await aeFreightUS(creds, p.productId);
-    if (options.length === 0) return { options, note: 'No US freight option returned' };
-    return { options, note: '' };
+    const { options, rawKeys, rawSample } = await aeFreightUS(creds, p.productId);
+    if (options.length === 0) return { options, note: 'No US freight option returned', rawKeys, rawSample };
+    return { options, note: '', rawKeys, rawSample };
   } catch (e) {
-    return { options: [], note: e instanceof Error ? e.message : 'Freight check failed' };
+    return { options: [], note: e instanceof Error ? e.message : 'Freight check failed', rawKeys: [], rawSample: '' };
   }
 }
 
@@ -95,17 +95,21 @@ export async function POST(req: Request) {
     let passed = 0;
     let failed = 0;
     const out: StagedOut[] = [];
+    const noteCounts = new Map<string, number>();
+    let freightDebug: { rawKeys: string[]; rawSample: string } | null = null;
 
     for (let i = 0; i < products.length; i += FREIGHT_BATCH) {
       const batch = products.slice(i, i + FREIGHT_BATCH);
       const results = await Promise.all(batch.map((p) => vetOne(creds, p)));
       for (let j = 0; j < batch.length; j++) {
         const p = batch[j];
-        const { options, note } = results[j];
+        const { options, note, rawKeys, rawSample } = results[j];
         vetted++;
         const ships = options.length > 0;
         if (ships) passed++;
         else failed++;
+        if (!freightDebug && rawKeys.length > 0) freightDebug = { rawKeys, rawSample };
+        noteCounts.set(note || '(passed)', (noteCounts.get(note || '(passed)') ?? 0) + 1);
         const staged: StagedOut = {
           aeProductId: p.productId,
           title: p.title,
@@ -123,6 +127,7 @@ export async function POST(req: Request) {
         await db.collection('staging').doc(p.productId).set(
           {
             ...staged,
+            freightRawKeys: rawKeys,
             categoryId,
             keyword,
             stage: 1,
@@ -144,7 +149,17 @@ export async function POST(req: Request) {
       totalCount,
       finishedAt: Date.now(),
     });
-    return NextResponse.json({ ok: true, vetted, passed, failed, totalCount, products: out, debug });
+    return NextResponse.json({
+      ok: true,
+      vetted,
+      passed,
+      failed,
+      totalCount,
+      products: out,
+      debug,
+      freightDebug,
+      noteBreakdown: [...noteCounts.entries()].map(([note, count]) => ({ note, count })),
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Import failed.';
     await jobRef.update({ status: 'error', error: msg, finishedAt: Date.now() });

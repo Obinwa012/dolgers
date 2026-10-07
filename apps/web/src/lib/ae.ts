@@ -190,11 +190,74 @@ function str(v: unknown): string {
   return v === null || v === undefined ? '' : String(v);
 }
 
+/** Normalize a rating to the 5-star scale. evaluateRate comes back as a
+ *  percentage (e.g. "100.0"); score is already 0-5. */
+function normRating(v: unknown): number | null {
+  const n = num(v);
+  if (n === null) return null;
+  if (n > 5.5) return Math.round((n / 20) * 10) / 10;
+  return n;
+}
+
+const PRODUCT_ID_KEYS = ['product_id', 'productId', 'itemId', 'item_id', 'productID', 'id'];
+const PRODUCT_TITLE_KEYS = ['product_title', 'productTitle', 'title'];
+
+/** Heuristic: is this object one search-result product? */
+function isProductLike(o: unknown): o is Record<string, unknown> {
+  if (!o || typeof o !== 'object' || Array.isArray(o)) return false;
+  const r = o as Record<string, unknown>;
+  const hasId = PRODUCT_ID_KEYS.some((k) => typeof r[k] === 'string' || typeof r[k] === 'number');
+  const hasTitle = PRODUCT_TITLE_KEYS.some((k) => typeof r[k] === 'string' && (r[k] as string).length > 0);
+  return hasId && hasTitle;
+}
+
+/**
+ * Find the products array anywhere under a response node, tolerant of shape
+ * drift: AliExpress renames the wrapper key between queries/endpoints, so we
+ * prefer the documented keys but fall back to scanning for the first array of
+ * product-like objects (also handles JSON-string-encoded payloads).
+ */
+function findProductArray(node: unknown, depth = 0): { list: Record<string, unknown>[]; via: string } | null {
+  if (depth > 6 || node === null || typeof node !== 'object') return null;
+  if (Array.isArray(node)) {
+    if (node.length > 0 && isProductLike(node[0])) return { list: node, via: 'array-scan' };
+    for (const el of node) {
+      const found = findProductArray(el, depth + 1);
+      if (found) return found;
+    }
+    return null;
+  }
+  const r = node as Record<string, unknown>;
+  for (const k of ['selection_search_product', 'product', 'products', 'item']) {
+    const v = r[k];
+    if (Array.isArray(v) && v.length > 0 && isProductLike(v[0])) {
+      return { list: v as Record<string, unknown>[], via: `key:${k}` };
+    }
+  }
+  // String-encoded JSON payloads (AliExpress does this on some endpoints).
+  for (const k of Object.keys(r)) {
+    const v = r[k];
+    if (typeof v === 'string' && v.trim().startsWith('[')) {
+      try {
+        const found = findProductArray(JSON.parse(v) as unknown, depth + 1);
+        if (found) return { list: found.list, via: `json-string:${k}→${found.via}` };
+      } catch {
+        /* not JSON */
+      }
+    }
+  }
+  for (const k of Object.keys(r)) {
+    const found = findProductArray(r[k], depth + 1);
+    if (found) return { list: found.list, via: `${k}→${found.via}` };
+  }
+  return null;
+}
+
 /** aliexpress.ds.text.search — categoryId + keyWord + ship_from=US filter. */
 export async function aeTextSearch(
   creds: AeCreds,
   opts: { keyword: string; categoryId: string; pageIndex: number; pageSize: number },
-): Promise<{ products: SearchProduct[]; totalCount: number | null; debug: { topKeys: string[]; dataKeys: string[]; firstProductKeys: string[] } }> {
+): Promise<{ products: SearchProduct[]; totalCount: number | null; debug: { topKeys: string[]; dataKeys: string[]; firstProductKeys: string[]; parseVia: string; rawCount: number; parsedCount: number } }> {
   const searchExtend = JSON.stringify([{ min: '', max: '', searchKey: 'ship_from', searchValue: 'US' }]);
   const payload = (await methodCall(creds, 'aliexpress.ds.text.search', {
     keyWord: opts.keyword,
@@ -219,32 +282,28 @@ export async function aeTextSearch(
   }
   const data = (node.data as Record<string, unknown>) ?? node;
   const totalCount = num(data.totalCount);
-  let raw: unknown[] = [];
-  const products = data.products as unknown;
-  if (Array.isArray(products)) raw = products;
-  else if (products && typeof products === 'object') {
-    const p = products as Record<string, unknown>;
-    for (const k of ['selection_search_product', 'product', 'products', 'item']) {
-      const inner = p[k];
-      if (Array.isArray(inner)) { raw = inner; break; }
-      if (inner && typeof inner === 'object') { raw = [inner]; break; }
-    }
-  }
+  // Prefer the products node, widen to all of data if the wrapper key drifted.
+  const productsNode = (data.products as unknown) ?? data;
+  const found = findProductArray(productsNode);
+  const raw = found?.list ?? [];
+  const parseVia = found?.via ?? '(none)';
+  const products = (raw as Record<string, unknown>[]).map((r) => ({
+    // simplify=true returns camelCase (itemId, targetSalePrice, evaluateRate,
+    // itemMainPic); non-simplified responses use snake_case. Accept both.
+    // score is the 5-star rating; evaluateRate is a satisfaction percentage.
+    productId: str(r.product_id ?? r.productId ?? r.itemId ?? r.item_id ?? r.productID ?? r.id),
+    title: str(r.product_title ?? r.productTitle ?? r.title),
+    image: str(r.product_main_image_url ?? r.productMainImageUrl ?? r.itemMainPic ?? r.imageUrl ?? r.image),
+    priceMin: num(r.target_sale_price ?? r.targetSalePrice ?? r.salePrice ?? r.sale_price),
+    priceMax: num(r.target_sale_price_max ?? r.targetSalePriceMax ?? r.target_sale_price ?? r.targetSalePrice ?? r.salePrice ?? r.sale_price),
+    currency: str(r.target_sale_price_currency ?? r.targetOriginalPriceCurrency ?? r.salePriceCurrency ?? r.currency ?? 'USD') || 'USD',
+    rating: normRating(r.score ?? r.evaluate_rate ?? r.evaluateRate),
+    orders: num(r.lastest_volume ?? r.orders),
+  })).filter((p) => p.productId);
   return {
-    products: (raw as Record<string, unknown>[]).map((r) => ({
-      // simplify=true returns camelCase (itemId, targetSalePrice, evaluateRate);
-      // non-simplified responses use snake_case. Accept both.
-      productId: str(r.product_id ?? r.productId ?? r.itemId ?? r.id),
-      title: str(r.product_title ?? r.productTitle ?? r.title),
-      image: str(r.product_main_image_url ?? r.productMainImageUrl ?? r.imageUrl ?? r.image),
-      priceMin: num(r.target_sale_price ?? r.targetSalePrice ?? r.salePrice ?? r.sale_price),
-      priceMax: num(r.target_sale_price_max ?? r.targetSalePriceMax ?? r.target_sale_price ?? r.targetSalePrice ?? r.salePrice ?? r.sale_price),
-      currency: str(r.target_sale_price_currency ?? r.currency ?? 'USD') || 'USD',
-      rating: num(r.evaluate_rate ?? r.evaluateRate ?? r.score),
-      orders: num(r.lastest_volume ?? r.orders),
-    })).filter((p) => p.productId),
+    products,
     totalCount,
-    debug: describeSearchPayload(payload),
+    debug: { ...describeSearchPayload(payload), parseVia, rawCount: raw.length, parsedCount: products.length },
   };
 }
 
@@ -284,16 +343,37 @@ export interface FreightOption {
   raw: string;
 }
 
-/** Normalize the many shapes freight.calculate can return into a flat option list. */
+/**
+ * Normalize the many shapes freight.calculate can return into a flat option list.
+ * Real shape (verified live 2026-10-06):
+ *   result.aeop_freight_calculate_result_for_buyer_d_t_o_list
+ *     .aeop_freight_calculate_result_for_buyer_dto[] = {
+ *       service_name, estimated_delivery_time,
+ *       freight: { amount, cent, currency_code },
+ *       error_code, tracking_available }
+ */
+const FREIGHT_LIST_KEYS = [
+  'freight',
+  'options',
+  'shippingOptions',
+  'list',
+  'data',
+  'result',
+  'aeop_freight_calculate_result_for_buyer_d_t_o_list',
+  'aeop_freight_calculate_result_for_buyer_dto',
+];
+
 function normalizeFreight(result: unknown): FreightOption[] {
   const out: FreightOption[] = [];
   const visit = (node: unknown): void => {
     if (!node || typeof node !== 'object') return;
     if (Array.isArray(node)) { node.forEach(visit); return; }
     const r = node as Record<string, unknown>;
-    const carrier = r.logisticsCompany ?? r.logistics_company ?? r.carrier ?? r.company;
-    const eta = r.deliveryTime ?? r.delivery_time ?? r.eta ?? r.time;
-    const amount = r.freightAmount ?? r.freight_amount ?? r.price ?? r.amount ?? r.cost;
+    if (typeof r.error_code === 'number' && r.error_code !== 0) return; // unreachable option
+    const carrier = r.service_name ?? r.logisticsCompany ?? r.logistics_company ?? r.carrier ?? r.company;
+    const eta = r.estimated_delivery_time ?? r.deliveryTime ?? r.delivery_time ?? r.eta ?? r.time;
+    const freightObj = (r.freight && typeof r.freight === 'object' ? r.freight : {}) as Record<string, unknown>;
+    const amount = r.freightAmount ?? r.freight_amount ?? r.price ?? r.amount ?? r.cost ?? freightObj.amount ?? freightObj.value;
     if (carrier !== undefined || eta !== undefined || amount !== undefined) {
       let cost: number | null = null;
       let currency = 'USD';
@@ -304,19 +384,21 @@ function normalizeFreight(result: unknown): FreightOption[] {
       } else {
         cost = num(amount);
       }
-      if (r.currency) currency = String(r.currency);
+      const cur = freightObj.currency_code ?? r.currencyCode ?? r.currency;
+      if (cur) currency = String(cur);
+      const tr = r.trackingAvailable ?? r.tracking_available ?? r.tracking;
       out.push({
         carrier: str(carrier) || 'Unknown',
         eta: str(eta),
         cost,
         currency,
-        tracking: r.tracking === true || String(r.tracking).toLowerCase() === 'true',
+        tracking: tr === true || String(tr).toLowerCase() === 'true',
         raw: JSON.stringify(r).slice(0, 500),
       });
       return;
     }
     // Recurse into likely containers, but avoid runaway on huge payloads.
-    for (const k of ['freight', 'options', 'shippingOptions', 'list', 'data', 'result']) {
+    for (const k of FREIGHT_LIST_KEYS) {
       if (k in r) visit(r[k]);
     }
   };
@@ -328,8 +410,12 @@ function normalizeFreight(result: unknown): FreightOption[] {
  * aliexpress.logistics.buyer.freight.calculate with send_goods_country_code=US.
  * Per the vetting rule this is the source of truth: options returned => the
  * product truly ships from the US; none/error => no US stock.
+ * Returns the raw result's top-level keys too, so parse misses are diagnosable.
  */
-export async function aeFreightUS(creds: AeCreds, productId: string): Promise<FreightOption[]> {
+export async function aeFreightUS(
+  creds: AeCreds,
+  productId: string,
+): Promise<{ options: FreightOption[]; rawKeys: string[]; rawSample: string }> {
   const dto = JSON.stringify({
     product_id: String(productId),
     product_num: 1,
@@ -346,10 +432,14 @@ export async function aeFreightUS(creds: AeCreds, productId: string): Promise<Fr
   }
   const node = (payload?.['aliexpress_logistics_buyer_freight_calculate_response'] as Record<string, unknown>) ?? payload ?? {};
   const result = (node.result as unknown) ?? node;
+  const rawKeys =
+    result && typeof result === 'object' && !Array.isArray(result) ? Object.keys(result).slice(0, 15) : [];
+  const rawSample =
+    result && typeof result === 'object' ? JSON.stringify(result).slice(0, 600) : '';
   if (result && typeof result === 'object' && (result as Record<string, unknown>).success === false) {
-    return []; // "not reachable" => no US stock
+    return { options: [], rawKeys, rawSample }; // "not reachable" => no US stock
   }
-  return normalizeFreight(result);
+  return { options: normalizeFreight(result), rawKeys, rawSample };
 }
 
 export function buildAuthorizeUrl(appKey: string, redirectUri: string, state: string): string {
