@@ -1,5 +1,5 @@
 import 'server-only';
-import { randomBytes, scryptSync, timingSafeEqual } from 'crypto';
+import { randomBytes } from 'crypto';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { serverDb } from './server/firebase-admin';
@@ -7,27 +7,23 @@ import { serverDb } from './server/firebase-admin';
 const COOKIE_NAME = 'dolgers_admin_session';
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
 
-function parseHash(stored: string): { n: number; salt: string; hex: string } | null {
-  const parts = stored.split('$');
-  if (parts.length !== 4 || parts[0] !== 'scrypt') return null;
-  const n = parseInt(parts[1], 10);
-  if (!Number.isFinite(n)) return null;
-  return { n, salt: parts[2], hex: parts[3] };
+/** UIDs from the users collection carrying admin=true. */
+export async function getAdminUids(): Promise<string[]> {
+  const db = serverDb();
+  if (!db) return [];
+  const snap = await db.collection('users').where('admin', '==', true).limit(25).get();
+  return snap.docs.map((d) => d.id);
 }
 
-/** Constant-time password check against ADMIN_PASSWORD_HASH (scrypt$N$salt$hex). */
-export function verifyAdminPassword(password: string): boolean {
-  const stored = process.env.ADMIN_PASSWORD_HASH ?? '';
-  if (!stored || !password) return false;
-  try {
-    const parsed = parseHash(stored);
-    if (!parsed) return false;
-    const derived = scryptSync(password, parsed.salt, 32, { N: parsed.n, r: 8, p: 1 });
-    const expected = Buffer.from(parsed.hex, 'hex');
-    return derived.length === expected.length && timingSafeEqual(derived, expected);
-  } catch {
-    return false;
-  }
+/** All admin user docs for display. */
+export async function getAdminUsers(): Promise<{ uid: string; email: string }[]> {
+  const db = serverDb();
+  if (!db) return [];
+  const snap = await db.collection('users').where('admin', '==', true).limit(25).get();
+  return snap.docs.map((d) => ({
+    uid: d.id,
+    email: String((d.data() as { email?: string }).email ?? ''),
+  }));
 }
 
 /** Create a server-side session doc; returns the token to store in the cookie. */

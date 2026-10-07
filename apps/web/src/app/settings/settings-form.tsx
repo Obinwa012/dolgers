@@ -9,7 +9,7 @@ interface AeStatus {
   expiresAt: number | null;
 }
 
-export default function SettingsForm() {
+export default function SettingsForm({ admins }: { admins: { uid: string; email: string }[] }) {
   const [status, setStatus] = useState<AeStatus | null>(null);
   const [appKey, setAppKey] = useState('');
   const [appSecret, setAppSecret] = useState('');
@@ -56,6 +56,22 @@ export default function SettingsForm() {
       </header>
       <div className="max-w-xl mx-auto px-6 py-8">
         <a href="/" className="text-sm underline underline-offset-4 mb-6 inline-block">← Back to dashboard</a>
+
+        <div className="bg-paper border border-line rounded-lg p-6 mb-6">
+          <h2 className="font-medium mb-3">Admin users</h2>
+          {admins.length === 0 ? (
+            <p className="text-sm text-muted">No admins yet — the first login assigns itself.</p>
+          ) : (
+            <ul className="text-sm space-y-1">
+              {admins.map((a) => (
+                <li key={a.uid} className="flex items-center gap-2">
+                  <span>{a.email || a.uid}</span>
+                  <span className="text-xs bg-success/10 text-success border border-success/30 rounded px-2 py-0.5">admin</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
         <div className="bg-paper border border-line rounded-lg p-6 mb-6">
           <h2 className="font-medium mb-3">Connection status</h2>

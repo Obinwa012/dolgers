@@ -1,13 +1,11 @@
 # Firebase App Hosting configuration for the DOLGERS import-system admin
 # (this folder is the backend's root directory).
 #
-# ADMIN_PASSWORD_HASH: scrypt hash of the admin password (one-way; safe to commit).
-# To rotate the password: generate a new hash and update this value, then redeploy.
-# Sessions are server-side docs in the `sessions` collection (no signing secret needed).
-#
-# REQUIRED IAM (one-time, Firebase/GCP console): grant the App Hosting compute
-# service account roles/datastore.user on the dolgers project, otherwise the
-# admin app can read Firestore but not write staging/jobs/config docs.
+# Auth: Firebase Authentication (email/password provider). Admins are tracked
+# in the Firestore `users` collection: users/{uid} = { email, admin }.
+# The first login auto-promotes to admin (bootstrap); after that only docs
+# with admin=true can sign in.
+# Sessions are server-side docs in the `sessions` collection.
 runConfig:
   minInstances: 0
   maxInstances: 5
@@ -22,8 +20,3 @@ env:
   - variable: NEXT_PUBLIC_SITE_URL
     value: https://dolgers--dolgers.us-central1.hosted.app
     availability: [BUILD, RUNTIME]
-
-  # Admin login. Hash of the password issued to Michael 2026-10-06 (single admin).
-  - variable: ADMIN_PASSWORD_HASH
-    value: scrypt$16384$80d3e6857769d7480ed94ab8c7f0b8ff$3b7263d954883f3f4795c27b8495945d53f474b3c1094c718f0e64abdcc73287
-    availability: [RUNTIME]
