@@ -25,5 +25,5 @@ env:
 
   # Admin login. Hash of the password issued to Michael 2026-10-06 (single admin).
   - variable: ADMIN_PASSWORD_HASH
-    value: scrypt$16384$b50ca826834a66016707b2a66151938d$e9be2ba85554c45651ff59df32bffd94b2985551199e0e1f525aa784432e16b5
+    value: scrypt$16384$80d3e6857769d7480ed94ab8c7f0b8ff$3b7263d954883f3f4795c27b8495945d53f474b3c1094c718f0e64abdcc73287
     availability: [RUNTIME]
