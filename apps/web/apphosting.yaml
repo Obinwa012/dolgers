@@ -1,32 +1,29 @@
-# Firebase App Hosting configuration for the DOLGERS website (this folder is the backend's root
-# directory). Secrets are references to Cloud Secret Manager; see DEPLOY.md.
+# Firebase App Hosting configuration for the DOLGERS import-system admin
+# (this folder is the backend's root directory).
+#
+# ADMIN_PASSWORD_HASH: scrypt hash of the admin password (one-way; safe to commit).
+# To rotate the password: generate a new hash and update this value, then redeploy.
+# Sessions are server-side docs in the `sessions` collection (no signing secret needed).
+#
+# REQUIRED IAM (one-time, Firebase/GCP console): grant the App Hosting compute
+# service account roles/datastore.user on the dolgers project, otherwise the
+# admin app can read Firestore but not write staging/jobs/config docs.
 runConfig:
-  minInstances: 0     # raise to 1 once traffic justifies avoiding cold starts
-  maxInstances: 20    # hard cap: protects the bill from traffic floods
+  minInstances: 0
+  maxInstances: 5
   concurrency: 80
   cpu: 1
   memoryMiB: 1024
 
 env:
   - variable: SITE_URL
-    value: https://dolgers.com
+    value: https://dolgers--dolgers.us-central1.hosted.app
     availability: [BUILD, RUNTIME]
   - variable: NEXT_PUBLIC_SITE_URL
-    value: https://dolgers.com
+    value: https://dolgers--dolgers.us-central1.hosted.app
     availability: [BUILD, RUNTIME]
 
-  # Stripe publishable key (public by design).
-  - variable: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-    value: pk_live_51UMszJAFk9pSHq0OxVlLB2qR3bfSlJEKE26Ul2JtAtHsNmXbvaD5LjWKwSjLGiU3GOMccBStuPh0MYj3PaHjbkYS00eKqhByeL
-    availability: [BUILD, RUNTIME]
-
-  # reCAPTCHA Enterprise site key for Firebase App Check (public by design).
-  - variable: NEXT_PUBLIC_RECAPTCHA_SITE_KEY
-    value: REPLACE_ME
-    availability: [BUILD, RUNTIME]
-
-  # Typesense: host plus a search-only key, used by the website server to read the index.
-  # (Not configured yet — the site falls back to in-memory search. Add TYPESENSE_HOST and
-  # TYPESENSE_SEARCH_KEY when Typesense is set up; see DEPLOY.md.)
-# Note: REVALIDATE_SECRET removed — needs proper App Hosting secret setup via console.
-
+  # Admin login. Hash of the password issued to Michael 2026-10-06 (single admin).
+  - variable: ADMIN_PASSWORD_HASH
+    value: scrypt$16384$b50ca826834a66016707b2a66151938d$e9be2ba85554c45651ff59df32bffd94b2985551199e0e1f525aa784432e16b5
+    availability: [RUNTIME]

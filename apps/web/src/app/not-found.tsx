@@ -1,13 +1,13 @@
 import Link from 'next/link';
-import { Logo } from '@/components/Logo';
 
 export default function NotFound() {
   return (
-    <main id="main" className="container-page flex min-h-[70vh] flex-col items-center justify-center text-center">
-      <Logo />
-      <h1 className="display mt-12 text-5xl">Not found</h1>
-      <p className="mt-4 max-w-md text-muted">That page has moved, sold out or never existed.</p>
-      <Link href="/" className="btn btn-primary mt-8">Back to the shop</Link>
+    <main className="min-h-screen flex flex-col items-center justify-center text-center bg-cream px-4">
+      <h1 className="font-display text-5xl mb-4">Not found</h1>
+      <p className="text-muted mb-8">That page does not exist.</p>
+      <Link href="/" className="bg-ink text-paper rounded px-6 py-2">
+        Back to dashboard
+      </Link>
     </main>
   );
 }
