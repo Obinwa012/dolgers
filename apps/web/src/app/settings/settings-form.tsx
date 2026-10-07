@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 
 interface AeStatus {
@@ -13,7 +14,14 @@ export default function SettingsForm({ admins }: { admins: { uid: string; email:
   const [status, setStatus] = useState<AeStatus | null>(null);
   const [appKey, setAppKey] = useState('');
   const [appSecret, setAppSecret] = useState('');
-  const [msg, setMsg] = useState('');
+  // Read the OAuth result from the URL during initial render, not in an effect.
+  const [msg, setMsg] = useState(() => {
+    if (typeof window === 'undefined') return '';
+    const q = new URLSearchParams(window.location.search);
+    if (q.get('connected') === '1') return 'AliExpress connected — tokens saved.';
+    const e = q.get('error');
+    return e ? `Connection failed: ${e}` : '';
+  });
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -22,11 +30,14 @@ export default function SettingsForm({ admins }: { admins: { uid: string; email:
   }, []);
 
   useEffect(() => {
-    load();
-    const q = new URLSearchParams(window.location.search);
-    if (q.get('connected') === '1') setMsg('AliExpress connected — tokens saved.');
-    if (q.get('error')) setMsg(`Connection failed: ${q.get('error')}`);
-  }, [load]);
+    let ignore = false;
+    fetch('/api/settings/status').then(async (r) => {
+      if (!ignore && r.ok) setStatus(await r.json());
+    });
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -55,7 +66,7 @@ export default function SettingsForm({ admins }: { admins: { uid: string; email:
         <p className="text-sm opacity-70">AliExpress connection for the import pipeline</p>
       </header>
       <div className="max-w-xl mx-auto px-6 py-8">
-        <a href="/" className="text-sm underline underline-offset-4 mb-6 inline-block">← Back to dashboard</a>
+        <Link href="/" className="text-sm underline underline-offset-4 mb-6 inline-block">← Back to dashboard</Link>
 
         <div className="bg-paper border border-line rounded-lg p-6 mb-6">
           <h2 className="font-medium mb-3">Admin users</h2>

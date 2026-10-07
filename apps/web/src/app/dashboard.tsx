@@ -47,13 +47,6 @@ export default function Dashboard() {
 
   const kw = (id: string, fallback: string) => keywords[id] ?? fallback;
 
-  const loadStatus = useCallback(async () => {
-    try {
-      const r = await fetch('/api/settings/status');
-      if (r.ok) setAe(await r.json());
-    } catch { /* ignore */ }
-  }, []);
-
   const loadStaging = useCallback(async (categoryId: string) => {
     try {
       const r = await fetch(`/api/stage1/staging?categoryId=${encodeURIComponent(categoryId)}`);
@@ -64,7 +57,15 @@ export default function Dashboard() {
     } catch { /* ignore */ }
   }, []);
 
-  useEffect(() => { loadStatus(); }, [loadStatus]);
+  useEffect(() => {
+    let ignore = false;
+    fetch('/api/settings/status').then(async (r) => {
+      if (!ignore && r.ok) setAe(await r.json());
+    });
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   async function runImport(catId: string, keyword: string, page: number) {
     setRunning(catId);
