@@ -41,6 +41,7 @@ export default function Dashboard() {
   const [activeCat, setActiveCat] = useState<string | null>(null);
   const [staged, setStaged] = useState<StagedProduct[]>([]);
   const [lastRun, setLastRun] = useState<{ vetted: number; passed: number; failed: number; totalCount: number | null } | null>(null);
+  const [debug, setDebug] = useState<{ topKeys: string[]; dataKeys: string[]; firstProductKeys: string[] } | null>(null);
 
   const kw = (id: string, fallback: string) => keywords[id] ?? fallback;
 
@@ -79,6 +80,7 @@ export default function Dashboard() {
         return;
       }
       setLastRun({ vetted: d.vetted, passed: d.passed, failed: d.failed, totalCount: d.totalCount });
+      setDebug(d.debug ?? null);
       setProgress(`Done — vetted ${d.vetted}, ${d.passed} ship from the USA.`);
       setActiveCat(catId);
       await loadStaging(catId);
@@ -161,6 +163,12 @@ export default function Dashboard() {
             Last run: <strong>{lastRun.passed}</strong> passed / {lastRun.vetted} vetted
             {lastRun.totalCount !== null && <> (search returned {lastRun.totalCount} total)</>}
           </p>
+        )}
+        {debug && lastRun && lastRun.vetted === 0 && (
+          <details className="text-xs text-muted mb-6 bg-paper border border-line rounded p-3">
+            <summary className="cursor-pointer">No products parsed — response shape</summary>
+            <pre className="mt-2 whitespace-pre-wrap">top: {debug.topKeys.join(', ')}{'\n'}data: {debug.dataKeys.join(', ')}{'\n'}first product: {debug.firstProductKeys.join(', ') || '(none)'}</pre>
+          </details>
         )}
 
         {activeCat && (

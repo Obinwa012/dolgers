@@ -194,7 +194,7 @@ function str(v: unknown): string {
 export async function aeTextSearch(
   creds: AeCreds,
   opts: { keyword: string; categoryId: string; pageIndex: number; pageSize: number },
-): Promise<{ products: SearchProduct[]; totalCount: number | null }> {
+): Promise<{ products: SearchProduct[]; totalCount: number | null; debug: { topKeys: string[]; dataKeys: string[]; firstProductKeys: string[] } }> {
   const searchExtend = JSON.stringify([{ min: '', max: '', searchKey: 'ship_from', searchValue: 'US' }]);
   const payload = (await methodCall(creds, 'aliexpress.ds.text.search', {
     keyWord: opts.keyword,
@@ -232,16 +232,46 @@ export async function aeTextSearch(
   }
   return {
     products: (raw as Record<string, unknown>[]).map((r) => ({
-      productId: str(r.product_id ?? r.productId),
-      title: str(r.product_title ?? r.productTitle),
-      image: str(r.product_main_image_url ?? r.product_main_image ?? r.productMainImageUrl),
-      priceMin: num(r.target_sale_price ?? r.sale_price ?? r.target_sale_price_min),
-      priceMax: num(r.target_sale_price_max ?? r.target_sale_price ?? r.sale_price),
+      // simplify=true returns camelCase (itemId, targetSalePrice, evaluateRate);
+      // non-simplified responses use snake_case. Accept both.
+      productId: str(r.product_id ?? r.productId ?? r.itemId ?? r.id),
+      title: str(r.product_title ?? r.productTitle ?? r.title),
+      image: str(r.product_main_image_url ?? r.productMainImageUrl ?? r.imageUrl ?? r.image),
+      priceMin: num(r.target_sale_price ?? r.targetSalePrice ?? r.salePrice ?? r.sale_price),
+      priceMax: num(r.target_sale_price_max ?? r.targetSalePriceMax ?? r.target_sale_price ?? r.targetSalePrice ?? r.salePrice ?? r.sale_price),
       currency: str(r.target_sale_price_currency ?? r.currency ?? 'USD') || 'USD',
-      rating: num(r.evaluate_rate),
+      rating: num(r.evaluate_rate ?? r.evaluateRate ?? r.score),
       orders: num(r.lastest_volume ?? r.orders),
     })).filter((p) => p.productId),
     totalCount,
+    debug: describeSearchPayload(payload),
+  };
+}
+
+/** Minimal shape info for diagnosing parse issues (admin eyes only). */
+export function describeSearchPayload(payload: unknown): { topKeys: string[]; dataKeys: string[]; firstProductKeys: string[] } {
+  const p = (payload ?? {}) as Record<string, unknown>;
+  const node = (p['aliexpress_ds_text_search_response'] as Record<string, unknown>) ?? p;
+  const data = (node?.data as Record<string, unknown>) ?? {};
+  const products = (data as Record<string, unknown>).products as unknown;
+  let first: Record<string, unknown> = {};
+  const arr = Array.isArray(products) ? products : [];
+  if (arr.length > 0 && typeof arr[0] === 'object' && arr[0] !== null) {
+    first = arr[0] as Record<string, unknown>;
+  } else if (products && typeof products === 'object') {
+    const po = products as Record<string, unknown>;
+    for (const k of ['selection_search_product', 'product', 'products', 'item']) {
+      const inner = po[k];
+      if (Array.isArray(inner) && inner.length > 0 && typeof inner[0] === 'object') {
+        first = inner[0] as Record<string, unknown>;
+        break;
+      }
+    }
+  }
+  return {
+    topKeys: Object.keys(p).slice(0, 12),
+    dataKeys: Object.keys(data).slice(0, 12),
+    firstProductKeys: Object.keys(first).slice(0, 20),
   };
 }
 

@@ -84,7 +84,7 @@ export async function POST(req: Request) {
   });
 
   try {
-    const { products, totalCount } = await aeTextSearch(creds, {
+    const { products, totalCount, debug } = await aeTextSearch(creds, {
       keyword,
       categoryId,
       pageIndex: page,
@@ -144,7 +144,7 @@ export async function POST(req: Request) {
       totalCount,
       finishedAt: Date.now(),
     });
-    return NextResponse.json({ ok: true, vetted, passed, failed, totalCount, products: out });
+    return NextResponse.json({ ok: true, vetted, passed, failed, totalCount, products: out, debug });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Import failed.';
     await jobRef.update({ status: 'error', error: msg, finishedAt: Date.now() });
