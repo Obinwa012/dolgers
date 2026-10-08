@@ -458,17 +458,18 @@ export async function aeFreightUS(
  */
 export async function aeFeedNames(
   creds: AeCreds,
-): Promise<{ feeds: string[]; rawKeys: string[]; rawSample: string }> {
+): Promise<{ feeds: string[]; topKeys: string[]; rawKeys: string[]; rawSample: string }> {
   const payload = (await methodCall(creds, 'aliexpress.ds.feedname.get', {})) as Record<string, unknown>;
 
   if (payload && typeof payload === 'object' && 'error_response' in payload) {
     const e = (payload.error_response as Record<string, unknown>) ?? {};
     throw new Error(`Feed list failed: ${String(e.sub_msg ?? e.msg ?? 'unknown')}`);
   }
+  const topKeys = Object.keys((payload ?? {}) as Record<string, unknown>).slice(0, 12);
   const node = (payload?.['aliexpress_ds_feedname_get_response'] as Record<string, unknown>) ?? payload ?? {};
   const result = (node.result as Record<string, unknown>) ?? {};
   const rawKeys = Object.keys(result).slice(0, 15);
-  const rawSample = JSON.stringify(result).slice(0, 600);
+  const rawSample = JSON.stringify(payload).slice(0, 800);
   const feedNames = (result.feed_names as Record<string, unknown>) ?? {};
   const raw = (feedNames.feed_name as unknown[]) ?? [];
   const feeds = raw
@@ -481,7 +482,7 @@ export async function aeFeedNames(
       return '';
     })
     .filter(Boolean);
-  return { feeds, rawKeys, rawSample };
+  return { feeds, topKeys, rawKeys, rawSample };
 }
 
 /**
