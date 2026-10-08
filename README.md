@@ -1,73 +1,61 @@
 # DOLGERS
 
-A US clothing store stocked only with products that ship from US warehouses and pass a strict,
-evidence-based vetting pipeline. Quality over quantity: a product goes live only when the data says
-US customers will get what the page promises.
+The admin dashboard for DOLGERS, a men’s clothing store stocked only with items that ship from US
+warehouses and pass a strict, evidence-based vetting pipeline. Quality over quantity: a product goes
+live only when the data says US customers will get what the page promises.
 
-This repository holds the sourcing pipeline and database (phase 1) and the first version of the
-storefront (phase 2, browsing only). Accounts, checkout and automatic AliExpress order placement come
-next; the data model already carries what they need.
+Everything is done from the dashboard. You sign in, add your AliExpress and Claude keys in
+Settings, import men’s clothing from the US-warehouse feeds, vet it, review what needs you, and
+look inside the database. There is nothing to run from a terminal or Cloud Shell.
 
 | Part | What it is |
 | --- | --- |
-| `apps/web` | The storefront: Next.js 16 + Tailwind 4 on Firebase App Hosting. Home, Men, Women and product pages read live products from Firestore. A standalone app with its own lockfile (App Hosting builds this folder). |
-| `packages/core` | The pipeline: AliExpress client, review fetcher, vetting engine, Claude analyzers, listing writer, Firestore layer. |
-| `apps/pipeline` | The command-line runner (also the Cloud Run job image). |
-| `firebase` | Firestore security rules, indexes and rules tests. |
+| `apps/web` | The dashboard: Next.js 16 + Tailwind 4 on Firebase App Hosting (root directory `apps/web`, its own lockfile). |
+| `apps/web/src/core` | The pipeline: AliExpress client, review fetcher, vetting engine, Claude analyzers, listing writer, Firestore layer, and the job runner the dashboard drives. |
+| `firebase` | Firestore security rules and their tests. |
 
-How it decides, step by step, is in [ARCHITECTURE.md](ARCHITECTURE.md). Putting it live is in
-[DEPLOY.md](DEPLOY.md).
+How it decides is in [ARCHITECTURE.md](ARCHITECTURE.md). Putting it live is in [DEPLOY.md](DEPLOY.md).
 
-## Run it locally
+## Using the dashboard
 
-Requires Node 22+ and Java 21 (for the Firestore emulator).
-
-```bash
-npm install
-cp apps/pipeline/.env.example apps/pipeline/.env   # add your AliExpress app and Claude API keys
-npm run emulators                                   # terminal 1: local Firestore on :8080
-```
-
-In terminal 2:
-
-```bash
-npm run pipeline -- auth url --redirect https://YOUR-REGISTERED-CALLBACK --emulator
-npm run pipeline -- auth exchange THE_CODE --emulator     # stores access + refresh tokens
-npm run pipeline -- import --department men --pages 5 --emulator
-npm run pipeline -- run --limit 10 --emulator             # screen → vet → write listing → publish
-npm run pipeline -- report --emulator
-```
-
-`--dry-run` instead of `--emulator` keeps everything in memory and writes the results to
-`apps/pipeline/out/`. Dry runs read AliExpress tokens from `AE_ACCESS_TOKEN`.
-
-## The storefront
-
-```bash
-cd apps/web && npm install
-DOLGERS_DEMO=1 npm run dev      # preview with one sample product, no Firebase needed
-npm run dev                     # reads Firestore when GOOGLE_CLOUD_PROJECT (or FIREBASE_CONFIG) is set
-```
-
-Products appear on the site only when the pipeline marks them `live`. Pages are cached and
-refreshed every 5 minutes.
-
-## Commands
-
-| Command | What it does |
+| Page | What you do there |
 | --- | --- |
-| `auth url --redirect <uri>` / `auth exchange <code>` | Connect the AliExpress app; tokens renew themselves afterwards. |
-| `auth set --access <t> [--refresh <t>] [--expires <ms>]` / `auth status` | Store or inspect tokens by hand. |
-| `import --department men\|women [--pages 5] [--feeds a,b]` | Pull US-warehouse items from the four US feeds into the candidate queue. |
-| `run [--limit 25]` | Process due candidates: new ones by recent sales, then rechecks whose date has come. |
-| `vet <productId> [--department ...]` | Run one product through the pipeline. |
-| `monitor` | Re-check every listed product's price, stock, shipping, seller and ratings; pause what changed. |
-| `report` | Count products by status. |
+| **Overview** | Setup checklist, counts, what needs your review, recent jobs. |
+| **Import & vet** | **Import** adds men’s items from the US feeds to the queue. **Vet** runs the next items through the pipeline. **Monitor** re-checks listed products for price, stock and seller changes. Live progress and a log; Stop and Resume. |
+| **Products** | Live, needs-review, paused and retired products. Each one shows the listing, size guide, SEO preview, variant margins, sourcing and the full reasoning behind the decision. Approve, pause, reprice, re-vet, retire, delete, or edit the copy. |
+| **Queue** | Every imported item and where it stopped (screened out, not enough data, rejected…). Vet one now, requeue or skip. |
+| **Sellers** | AliExpress stores with ratings, strikes and blocks. Block or unblock. |
+| **Database** | Read-only browser for every Firestore collection. Keys and tokens are masked. |
+| **Settings** | AliExpress (app key, secret, Connect AliExpress, test), Claude (API key, models, test), DOLGERS rules (every vetting threshold, pricing, blocked brand words, feeds), Admins. |
+
+Jobs run in short steps driven by the open browser tab, so keep the Import & vet tab open while a
+job runs. Closing it pauses the job; Resume picks up exactly where it stopped.
+
+## Run it locally (for development)
+
+Requires Node 22+ and Java 21 (for the Firebase emulators).
+
+```bash
+npm install && npm --prefix apps/web install
+npm run emulators            # Firestore :8080 and Auth :9099
+```
+
+In a second terminal:
+
+```bash
+cd apps/web
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 GCLOUD_PROJECT=demo-dolgers \
+NEXT_PUBLIC_FIREBASE_API_KEY=demo NEXT_PUBLIC_FIREBASE_PROJECT_ID=demo-dolgers \
+NEXT_PUBLIC_AUTH_EMULATOR=http://127.0.0.1:9099 npm run dev
+```
+
+Create an account in the Auth emulator and sign in at http://localhost:3000. The first account to
+sign in becomes the admin.
 
 ## Checks
 
 ```bash
-npm run typecheck
-npm test              # 57 unit tests: signing, parsing, engine rules, listing checks, the full pipeline with fakes
-npm run test:rules    # security rules against the emulator
+npm run typecheck && npm test   # the pipeline and job runner (apps/web/test)
+npm run build
+npm run test:rules              # Firestore rules, against the emulator
 ```

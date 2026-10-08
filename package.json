@@ -2,17 +2,13 @@
   "name": "dolgers",
   "private": true,
   "type": "module",
-  "workspaces": [
-    "packages/core",
-    "apps/pipeline"
-  ],
   "scripts": {
-    "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present",
+    "dev": "npm --prefix apps/web run dev",
+    "build": "npm --prefix apps/web run build",
+    "typecheck": "npm --prefix apps/web run typecheck",
+    "test": "npm --prefix apps/web test",
     "test:rules": "firebase emulators:exec --only firestore --project demo-dolgers \"node --test firebase/tests/*.test.mjs\"",
-    "emulators": "firebase emulators:start --only firestore --project demo-dolgers",
-    "pipeline": "npm run start -w @dolgers/pipeline --",
-    "web": "npm --prefix apps/web run dev"
+    "emulators": "firebase emulators:start --only firestore,auth --project demo-dolgers"
   },
   "engines": {
     "node": ">=22"
@@ -20,7 +16,6 @@
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.2",
     "firebase": "^12.19.0",
-    "firebase-tools": "^15.32.1",
-    "typescript": "^5.9.3"
+    "firebase-tools": "^15.32.1"
   }
 }

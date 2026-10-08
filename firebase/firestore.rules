@@ -1,28 +1,13 @@
 rules_version = '2';
 
-// The pipeline writes everything with the Admin SDK, which bypasses these rules.
-// Clients may only read live products; admins (custom claim `admin: true`) may read
-// the review queue and decision records. Nothing is client-writable yet.
+// The admin dashboard reads and writes Firestore only from its server, with the Admin SDK, which
+// bypasses these rules. Browsers get no direct access except to read live products (for a future
+// storefront or feed). In particular, config/secrets (API keys and tokens), users (the admin flag),
+// sessions, oauth_states, jobs and work are never reachable from a client.
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isAdmin() {
-      return request.auth != null && request.auth.token.admin == true;
-    }
-
     match /products/{productId} {
-      allow get, list: if resource.data.status == 'live' || isAdmin();
-      allow write: if false;
-    }
-
-    match /sourcing/{id} { allow read: if isAdmin(); allow write: if false; }
-    match /vetting/{id} { allow read: if isAdmin(); allow write: if false; }
-    match /sellers/{id} { allow read: if isAdmin(); allow write: if false; }
-    match /candidates/{id} { allow read: if isAdmin(); allow write: if false; }
-    match /runs/{id} { allow read: if isAdmin(); allow write: if false; }
-
-    // config/aliexpress holds API tokens: never readable from a client, admin or not.
-    match /config/{doc} {
-      allow read: if isAdmin() && doc != 'aliexpress';
+      allow get, list: if resource.data.status == 'live';
       allow write: if false;
     }
 
