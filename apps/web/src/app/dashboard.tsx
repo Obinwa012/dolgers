@@ -45,10 +45,11 @@ export default function Dashboard() {
   const [freightDebug, setFreightDebug] = useState<{ rawKeys: string[]; rawSample: string } | null>(null);
   const [noteBreakdown, setNoteBreakdown] = useState<{ note: string; count: number }[]>([]);
   const [feeds, setFeeds] = useState<string[]>([]);
-  const [feedRaw, setFeedRaw] = useState<{ rawKeys: string[]; rawSample: string } | null>(null);
+  const [feedRaw, setFeedRaw] = useState<{ topKeys: string[]; rawKeys: string[]; rawSample: string } | null>(null);
   const [feedLoading, setFeedLoading] = useState(false);
   const [feedError, setFeedError] = useState('');
   const [activeFeed, setActiveFeed] = useState('');
+  const [manualFeed, setManualFeed] = useState('');
   const [feedCategory, setFeedCategory] = useState('');
   const [feedProducts, setFeedProducts] = useState<StagedProduct[]>([]);
   const [feedDebug, setFeedDebug] = useState<{ topKeys: string[]; firstProductKeys: string[]; parseVia: string; rawCount: number; parsedCount: number } | null>(null);
@@ -121,7 +122,7 @@ export default function Dashboard() {
         return;
       }
       setFeeds(d.feeds ?? []);
-      setFeedRaw({ rawKeys: d.rawKeys ?? [], rawSample: d.rawSample ?? '' });
+      setFeedRaw({ topKeys: d.topKeys ?? [], rawKeys: d.rawKeys ?? [], rawSample: d.rawSample ?? '' });
       if (d.feeds?.length > 0 && !activeFeed) setActiveFeed(d.feeds[0]);
     } catch {
       setFeedError('Network error — try again.');
@@ -131,7 +132,8 @@ export default function Dashboard() {
   }
 
   async function previewFeed() {
-    if (!activeFeed) return;
+    const feedName = manualFeed.trim() || activeFeed;
+    if (!feedName) return;
     setFeedLoading(true);
     setFeedError('');
     setFeedDebug(null);
@@ -139,7 +141,7 @@ export default function Dashboard() {
       const r = await fetch('/api/ae/feeds', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ feedName: activeFeed, categoryId: feedCategory || undefined, page: 1 }),
+        body: JSON.stringify({ feedName, categoryId: feedCategory || undefined, page: 1 }),
       });
       const d = await r.json();
       if (!r.ok) {
@@ -330,21 +332,27 @@ export default function Dashboard() {
                   onChange={(e) => setFeedCategory(e.target.value)}
                   className="border border-line rounded px-2 py-1.5 text-sm w-44 bg-paper"
                 />
-                <button
-                  onClick={previewFeed}
-                  disabled={feedLoading || !activeFeed}
-                  className="border border-ink rounded px-4 py-1.5 text-sm disabled:opacity-40"
-                >
-                  Preview feed
-                </button>
               </>
             )}
+            <input
+              placeholder="Or type a feed name directly"
+              value={manualFeed}
+              onChange={(e) => setManualFeed(e.target.value)}
+              className="border border-line rounded px-2 py-1.5 text-sm w-64 bg-paper"
+            />
+            <button
+              onClick={previewFeed}
+              disabled={feedLoading || (!activeFeed && !manualFeed.trim())}
+              className="border border-ink rounded px-4 py-1.5 text-sm disabled:opacity-40"
+            >
+              Preview feed
+            </button>
           </div>
           {feedError && <p className="text-sm text-danger mb-4">{feedError}</p>}
           {feedRaw && feeds.length === 0 && (
             <details className="text-xs text-muted mb-4 bg-paper border border-line rounded p-3">
               <summary className="cursor-pointer">No feeds parsed — raw response</summary>
-              <pre className="mt-2 whitespace-pre-wrap">keys: {feedRaw.rawKeys.join(', ') || '(none)'}{'\n'}{feedRaw.rawSample}</pre>
+              <pre className="mt-2 whitespace-pre-wrap">top: {feedRaw.topKeys.join(', ') || '(none)'}{'\n'}result keys: {feedRaw.rawKeys.join(', ') || '(none)'}{'\n'}{feedRaw.rawSample}</pre>
             </details>
           )}
           {feedDebug && (
