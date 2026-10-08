@@ -43,6 +43,8 @@ const SYSTEM = `You write the US product page for one item in a clothing store w
 Hard rules:
 - Use only facts in the evidence list. If something isn't there, don't say it. No "premium", "luxury", "high quality", "best", "perfect" or other claims you can't evidence. Never say "Made in USA"; the origin is "Imported".
 - Every listing fix in the evidence MUST appear in the bullets or description (e.g. decorative zippers, fit notes).
+- One bullet must state the origin as "Imported".
+- The size chart is the supplier's own measurements. Say so ("Size chart: supplier measurements, in inches") and never present them as standard US sizes.
 - Title: what it is, for whom, the pack size and one true feature. Under 70 characters. No years, no "new", no keyword stuffing, no brand names.
 - seo.title ≤ 60 characters, primary keyword first. seo.metaDescription ≤ 155 characters with a real reason to click. Keywords must be true of the product.
 - handle: lowercase-hyphenated, keywords only, ≤ 60 characters.
@@ -76,11 +78,12 @@ export function buildEvidence(i: ListingInput): Evidence[] {
   if (i.delivery?.maxDays) add(`Delivery: about ${i.delivery.minDays}-${i.delivery.maxDays} days from order to delivery`, 'api');
   add(`Variants sold: ${i.skus.map((s) => Object.entries(s.props).filter(([k]) => k !== 'Ships From').map(([k, v]) => `${k}=${v}`).join(', ')).join(' | ')}`, 'api');
   for (const f of i.listingFixes) add(`Listing fix (must appear): ${f}`, 'reviews');
-  if (i.sizeChart) {
+  if (i.sizeChart && 'columns' in i.sizeChart) {
     add(`Fit type: ${i.sizeChart.fitType}`, 'size-chart');
     for (const n of i.sizeChart.fitNotes) add(`Fit note: ${n}`, 'size-chart');
+    const kind = i.sizeChart.measurementType === 'garment' ? 'garment measurement' : i.sizeChart.measurementType === 'body' ? 'body measurement it fits' : 'measurement (type not stated by supplier)';
     for (const r of i.sizeChart.rows) {
-      add(`Size ${r.size}: fits ${r.fitsBody.map((b) => `${b.measure} ${b.min}-${b.max}"`).join(', ')}; garment ${Object.entries(r.garment).map(([k, v]) => `${k} ${v}"`).join(', ')}`, 'size-chart');
+      add(`Size ${r.size}, supplier ${kind}: ${Object.entries(r.measurements).map(([k, v]) => `${k} ${v}"`).join(', ')}${r.note ? `; US buyers: ${r.note}` : ''}`, 'size-chart');
     }
   }
   if (i.reviewSummary) add(`What buyers say: ${i.reviewSummary}`, 'reviews');
@@ -194,6 +197,7 @@ export function validateListing(d: ListingDraft, input: ListingInput, evidence: 
     else if (!key.test(pageText)) problems.push(`Listing fix not applied: ${fix}`);
   }
   if (!input.material) problems.push('Material is not confirmed (required for clothing listings)');
+  if (!/\bimported\b/i.test(pageText)) problems.push('The listing doesn\u2019t say "Imported"');
   return problems;
 }
 

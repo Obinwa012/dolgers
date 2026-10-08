@@ -36,6 +36,8 @@ export function until(ms: number, now = Date.now()): string {
 }
 
 export const OUTCOME_LABEL: Record<string, string> = {
+  ready: 'Passed: ready for your review',
+  skipped: 'Skipped after errors',
   published: 'Published',
   held: 'Held for review',
   insufficient_data: 'Not enough data',
@@ -62,7 +64,7 @@ export const CANDIDATE_STATUS_LABEL: Record<string, string> = {
   screened_out: 'Screened out',
   insufficient_data: 'Not enough data',
   rejected: 'Rejected',
-  held: 'Held',
+  held: 'Waiting for your review',
   published: 'Published',
   error: 'Error',
 };
@@ -90,9 +92,28 @@ export const sortSizes = (sizes: string[]) => [...sizes].sort((a, b) => sizeRank
 export type Tone = 'good' | 'warn' | 'bad' | 'neutral' | 'info';
 
 export function toneFor(status: string): Tone {
-  if (['live', 'published', 'import', 'done', 'pass'].includes(status)) return 'good';
+  if (['live', 'published', 'import', 'done', 'pass', 'ready'].includes(status)) return 'good';
   if (['pending_review', 'held', 'needs_review', 'probation', 'paused', 'insufficient_data', 'stopped'].includes(status)) return 'warn';
   if (['rejected', 'reject', 'error', 'retired', 'blocked'].includes(status)) return 'bad';
   if (['running', 'vetting', 'new'].includes(status)) return 'info';
   return 'neutral';
+}
+
+/** Reasons offered when you delete a product at review; grouped monthly to find new rules. */
+export const DELETE_REASONS = [
+  'Photos belong to another brand or seller',
+  'Design resembles a brand',
+  'Size chart doesn’t make sense',
+  'Price isn’t competitive',
+  'Listing text is wrong or misleading',
+  'Buyer photos don’t match',
+  'Other',
+] as const;
+
+
+export function lensUrl(img: string) {
+  return `https://lens.google.com/uploadbyurl?url=${encodeURIComponent(img)}`;
+}
+export function tineyeUrl(img: string) {
+  return `https://tineye.com/search?url=${encodeURIComponent(img)}`;
 }

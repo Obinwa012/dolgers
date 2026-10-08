@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { AliExpressClient } from '@/core/aliexpress/client.ts';
 import { ClaudeModel, DEFAULT_MODELS } from '@/core/ai/claude.ts';
 import { MENS_CLOTHING, US_FEEDS } from '@/core/stages.ts';
-import { DEFAULT_CONFIG, mergeConfig, type VettingConfig } from '@/core/vetting/config.ts';
+import { CONFIG_VERSION, DEFAULT_CONFIG, mergeConfig, type VettingConfig } from '@/core/vetting/config.ts';
 import { adminOrThrow } from '../auth.ts';
 import { siteUrl } from '../context.ts';
 import { db, repo } from '../firebase.ts';
@@ -125,25 +125,37 @@ export async function testClaude(): Promise<Result<{ message: string }>> {
 // ---------------------------------------------------------------- DOLGERS
 
 const Num = z.coerce.number().finite();
+const Share = Num.min(0).max(1);
 const ConfigInput = z.object({
   minStoreRating: Num.min(0).max(5),
   strongSellerRating: Num.min(0).max(5),
   importMinBuyers: Num.int().min(1),
   probationMinBuyers: Num.int().min(1),
   importMinTextReviews: Num.int().min(0),
-  maxProblemRate: Num.min(0).max(1),
+  minRecentReviews: Num.int().min(0),
+  recentDays: Num.int().min(1),
+  maxProblemUpperBound: Share,
+  probationMaxUpperBound: Share,
   systemicRejectBuyers: Num.int().min(1),
-  minUsVariantShare: Num.min(0).max(1),
-  maxChinaLogisticsShare: Num.min(0).max(1),
+  systemicRejectShare: Share,
+  recentProblemRatio: Num.min(1),
+  fakeReviews: z.object({ burstShare: Share, duplicateReviews: Num.int().min(2), noText5StarShare: Share }),
+  minUsVariantShare: Share,
+  maxChinaLogisticsShare: Share,
   maxDeliveryDays: Num.int().min(1),
   suspiciousShippingMaxFeeCents: Num.int().min(0),
   suspiciousShippingMaxItemCents: Num.int().min(0),
   recheckAfterDays: Num.int().min(1),
+  maxRefundRate: Share,
+  refundRateMinOrders: Num.int().min(1),
   pricing: z.object({
-    markup: Num.min(1),
+    profitCents: Num.int().min(0),
+    returnReserveRate: Share,
+    returnShippingCents: Num.int().min(0),
+    paymentFeeRate: Num.min(0).max(0.5),
+    paymentFeeFixedCents: Num.int().min(0),
     minProfitCents: Num.int().min(0),
     freeShipping: z.boolean(),
-    maxCostChangeBeforePause: Num.min(0).max(1),
   }),
   ipBlocklist: z.array(z.string()),
 });
@@ -157,10 +169,13 @@ export async function saveDolgers(input: {
     await adminOrThrow();
     const parsed = ConfigInput.safeParse(input.config);
     if (!parsed.success) return { ok: false, error: `Check the values: ${parsed.error.issues.map((i) => i.path.join('.')).join(', ')}` };
-    const config = mergeConfig(parsed.data);
+    const config = mergeConfig({ ...parsed.data, version: CONFIG_VERSION });
     config.ipBlocklist = [...new Set(config.ipBlocklist.map((w) => w.trim().toLowerCase()).filter(Boolean))];
     if (config.probationMinBuyers > config.importMinBuyers) {
       return { ok: false, error: 'Probation needs fewer buyers than a full import.' };
+    }
+    if (config.pricing.minProfitCents > config.pricing.profitCents) {
+      return { ok: false, error: 'The minimum profit can’t be more than the profit prices are set from.' };
     }
     const feeds = [...new Set(input.feeds.map((f) => f.trim()).filter(Boolean))];
     await repo().saveSettings({

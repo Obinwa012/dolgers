@@ -168,7 +168,7 @@ export function Runner({
 
         <Card title="2 · Vet">
           <p className="mb-3 text-ink-soft">
-            Vets the next items in the queue ({waiting} waiting). Passes go live; borderline items wait for you under Products → Needs review.
+            Vets the next items in the queue ({waiting} waiting). Everything that passes waits for your three checks under Products → Needs review; nothing goes live by itself.
           </p>
           <Field label="How many items" hint="Most items stop at the cheap checks. A full vet with reviews and AI takes 1–3 minutes.">
             <input type="number" min={1} max={500} className={input} value={limit} onChange={(e) => setLimit(Number(e.target.value))} />
@@ -180,7 +180,7 @@ export function Runner({
 
         <Card title="3 · Monitor">
           <p className="mb-3 text-ink-soft">
-            Re-checks every live, held and paused product for price, stock and shipping changes. Big cost changes pause a product until you reprice it.
+            Re-checks every live, held and paused product: stock, price, store ratings, supplier listing changes and new reviews. Runs by itself once a day; this runs it now.
           </p>
           <button className={`${btn.secondary} mt-4 w-full`} disabled={busy || blockedByOther} onClick={() => start('monitor', {})}>
             Check products now

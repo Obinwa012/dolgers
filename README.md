@@ -21,8 +21,8 @@ How it decides is in [ARCHITECTURE.md](ARCHITECTURE.md). Putting it live is in [
 | Page | What you do there |
 | --- | --- |
 | **Overview** | Setup checklist, counts, what needs your review, recent jobs. |
-| **Import & vet** | **Import** adds men’s items from the US feeds to the queue. **Vet** runs the next items through the pipeline. **Monitor** re-checks listed products for price, stock and seller changes. Live progress and a log; Stop and Resume. |
-| **Products** | Live, needs-review, paused and retired products. Each one shows the listing, size guide, SEO preview, variant margins, sourcing and the full reasoning behind the decision. Approve, pause, reprice, re-vet, retire, delete, or edit the copy. |
+| **Import & vet** | **Import** adds men’s items from the US feeds to the queue. **Vet** runs the next items through the pipeline. **Monitor** re-checks listed products for stock, cost, seller, supplier-listing and new-review changes; it also runs by itself once a day. Live progress and a log; Stop and Resume. |
+| **Products** | Nothing goes live by itself. Under Needs review, each product shows the buyer count, problem-rate bound, flags, top complaints and gallery photos beside buyer photos with reverse-image-search buttons. Tick three checks to publish, or delete with a reason (Products → Deleted keeps them for a monthly look). Also: pause, reprice, re-vet, retire, edit the copy, record your own orders and complaints. |
 | **Queue** | Every imported item and where it stopped (screened out, not enough data, rejected…). Vet one now, requeue or skip. |
 | **Sellers** | AliExpress stores with ratings, strikes and blocks. Block or unblock. |
 | **Database** | Read-only browser for every Firestore collection. Keys and tokens are masked. |

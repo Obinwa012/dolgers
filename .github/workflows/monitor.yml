@@ -1,0 +1,27 @@
+name: Daily monitor
+# Runs the dashboard's Monitor once a day: price, stock, store ratings, supplier listing changes and
+# new reviews for every live, held and paused product. The dashboard decides whether a run is due
+# (at most one every 20 hours), so checking every 3 hours just retries when it was busy.
+on:
+  schedule:
+    - cron: '17 */3 * * *'
+  workflow_dispatch:
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Run the Monitor on the dashboard
+        env:
+          URL: https://dolgers--dolgers.us-central1.hosted.app/api/cron/monitor
+        run: |
+          for i in $(seq 1 500); do
+            body=$(curl -s -X POST "$URL" --max-time 300) || { echo "request failed, retrying"; sleep 15; continue; }
+            echo "$body"
+            case "$body" in
+              *'"state":"running"'*) sleep 2 ;;
+              *'"state":"error"'*) exit 1 ;;
+              *) exit 0 ;;
+            esac
+          done

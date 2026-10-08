@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { Review } from '../types.ts';
 import type { ReviewAnalysis } from '../vetting/engine.ts';
 import { ISSUE_CATEGORIES, ISSUE_RULES, type IssueCategory } from '../vetting/issues.ts';
+import { isRecent } from '../vetting/stats.ts';
 import type { AiModels, StructuredModel } from './claude.ts';
 
 const IssueSchema = z.strictObject({
@@ -36,18 +37,21 @@ Rules:
 - "Took 2 weeks" is slow_delivery, not non_delivery. Never received / package lost = non_delivery. Tracking flagged as fraudulent, fake postage, label never scanned = fake_tracking.
 - Print or colour coming off, fading, cracking or the garment shrinking after washing or drying = wash_durability. A print that "feels like a sticker" alone is fabric_feel, not wash_durability.
 - If buyers state a material that contradicts the listing's stated material, use material_mismatch.
+- not_as_pictured is for an item that is clearly different from the photos: another design, cut or print. A shade that is a little off is color_differs.
 - Real, recognisable brand logos, celebrity photos or licensed characters mentioned by buyers = counterfeit_or_ip.
 
 Fit: for every review that says something about fit, add an entry: direction large/small/true (true = fits as expected), the dimension (overall, waist, length, inseam, chest, sleeves, shoulders, hips), and the buyer's height in inches and weight in pounds if they state them (convert cm/kg; else null).
 
 materialFromReviews: the fabric buyers consistently describe (e.g. "cotton"), or null if they don't say or disagree.
-summary: two sentences on what buyers like and dislike.`;
+summary: two sentences on what buyers like and dislike. Reviews marked "recent": true were written in the last 90 days and show the product as it is made now: lead with what they say, and say so if they differ from older reviews.`;
 
 export const ANALYSIS_CHUNK = 120;
 
-/** Reviews with written text, in the fixed order chunks are taken from. */
+/** Reviews with written text, newest first (a fixed order: chunks are taken from it by index). */
 export function textReviews(reviews: Review[]): Review[] {
-  return reviews.filter((r) => r.text || r.additionalText);
+  return reviews
+    .filter((r) => r.text || r.additionalText)
+    .sort((a, b) => (b.date || '').localeCompare(a.date || '') || a.id.localeCompare(b.id));
 }
 
 /** One model call over up to ANALYSIS_CHUNK written reviews. */
@@ -55,11 +59,14 @@ export async function analyzeReviewChunk(
   model: StructuredModel,
   models: AiModels,
   chunk: Review[],
-  context: { title: string; material: string | null },
+  context: { title: string; material: string | null; now?: number },
 ): Promise<ReviewAnalysis> {
+  const now = context.now ?? Date.now();
   const lines = chunk.map((r) =>
     JSON.stringify({
       id: r.id,
+      date: r.date,
+      recent: isRecent(r.date, now, 90) || undefined,
       stars: r.stars,
       country: r.country,
       variant: r.skuInfo,

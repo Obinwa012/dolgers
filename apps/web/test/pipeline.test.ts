@@ -43,7 +43,7 @@ let n = 0;
 const review = (o: Partial<Review> = {}): Review => ({
   id: `r${++n}`, buyer: `B***${n}`, anonymous: false, country: 'US', stars: 5, date: '2026-09-01',
   skuInfo: 'Color:3PCS Size:L Ships From:United States', shipsFromUS: true, logistics: 'USPS Priority Mail',
-  text: 'Comfortable, a little big', additionalText: '', images: 0, labels: {}, selected: false, ...o,
+  text: 'the zippers are decorative', additionalText: '', images: 0, labels: {}, selected: false, ...o,
 });
 const reviewSet = (reviews: Review[]): ReviewSet => ({
   mainId: 'm', productType: 'ORDINARY', pooledNotice: null,
@@ -57,7 +57,8 @@ const cand = (subId: string, department: 'men' = 'men'): CandidateDoc => ({
 });
 
 const cleanAnswers = (reviews: Review[]): Record<string, (p: Part[]) => unknown> => ({
-  'check product photos': () => ({ ipRisk: false, findings: [], printDescription: 'plain' }),
+  'check product photos': () => ({ ipRisk: false, findings: [], printDescription: 'plain', resemblance: null }),
+  "compare a clothing product's listing photos": () => ({ photos: [{ photo: 1, match: 'matches', detail: '' }], quality: 'Even stitching' }),
   'read customer reviews': () => ({
     issues: [{ category: 'decorative_feature', reviewIds: [reviews[0]!.id, reviews[1]!.id], quote: 'the zippers are decorative' }],
     fit: [{ reviewId: reviews[2]!.id, direction: 'large', dimension: 'waist', heightIn: 72, weightLb: null }],
@@ -69,18 +70,18 @@ const cleanAnswers = (reviews: Review[]): Record<string, (p: Part[]) => unknown>
     rows: ['S', 'M', 'L', 'XL', 'XXL'].map((size, i) => ({ size, measurements: [{ name: 'waist', value: 74 + i * 4 }, { name: 'inseam', value: 74.5 + i }] })),
     notes: '',
   }),
-  'build a US size guide': () => ({
+  'add fit advice': () => ({
     fitType: 'Relaxed jogger, elastic waist',
-    rows: ['S', 'M', 'L', 'XL', 'XXL'].map((size, i) => ({ size, fitsBody: [{ measure: 'waist', min: 28 + i * 3, max: 30 + i * 3 }], usSizeLabel: size, confidence: 'medium' })),
+    sizeNotes: [{ size: 'L', note: 'Runs large: size down if between sizes' }],
     fitNotes: ['Runs slightly large: size down if between sizes'],
-    reasoning: 'Elastic waist; US reviews say large.',
+    reasoning: 'Two US buyers say it runs large.',
   }),
   'write the US product page': () => ({
     title: "Men's Cargo Jogger Pants, 3-Pack – Elastic Waist",
     handle: 'mens-cargo-jogger-pants-3-pack',
     storeCategory: 'joggers',
     seo: { title: "Men's Cargo Jogger Pants 3-Pack | Elastic Waist", metaDescription: 'Three relaxed cargo joggers in black, olive and khaki. Ships from the US.', primaryKeyword: "men's cargo jogger pants", secondaryKeywords: ['cargo joggers 3 pack'] },
-    bullets: ['3 pairs: black, olive and khaki', 'Side-pocket zippers are decorative', 'Runs slightly large: size down if between sizes', 'Polyester'],
+    bullets: ['3 pairs: black, olive and khaki', 'Side-pocket zippers are decorative', 'Runs slightly large: size down if between sizes', 'Polyester', 'Imported'],
     description: ['Relaxed cargo joggers with an elastic drawstring waist.'],
     faq: [{ q: 'Do the zippers work?', a: 'No, they are decorative.' }],
     variants: ['12000057474585431', '12000057474585432', '12000057474585433', '12000057474585434', '12000057474585435'].map((skuId, i) => ({ skuId, color: '3-Pack: Black, Olive, Khaki', size: ['S', 'M', 'L', 'XL', 'XXL'][i]! })),
@@ -97,12 +98,16 @@ function pagesOf(set: ReviewSet) {
   };
 }
 
+const NOW = Date.parse('2026-10-08T12:00:00Z');
+/** The cargo pants promise 6–10 days; allow that here so a clean product shows as ready. */
+const CONFIG = { ...DEFAULT_CONFIG, maxDeliveryDays: 15 };
+
 function ctx(repo: MemoryRepo, fetchImpl: typeof fetch, model: StructuredModel, reviews: ReviewSet): PipelineContext {
   repo.secretsDoc = { aeAccessToken: 't', aeRefreshToken: 'r', aeExpiresAt: Date.now() + 3600e3 };
   return {
     ae: new AliExpressClient({ appKey: 'k', appSecret: 's', tokens: repo.tokenStore(), fetchImpl, sleep: async () => {}, minIntervalMs: 0 }),
-    repo, model: () => model, models: { fast: 'fast', careful: 'careful' }, config: DEFAULT_CONFIG, log: () => {},
-    fetchReviewPage: pagesOf(reviews), fetchImpl: imageFetch, sleep: async () => {},
+    repo, model: () => model, models: { fast: 'fast', careful: 'careful' }, config: CONFIG, log: () => {},
+    fetchReviewPage: pagesOf(reviews), fetchImpl: imageFetch, sleep: async () => {}, now: () => NOW,
   };
 }
 
@@ -120,8 +125,8 @@ async function processCandidate(c: PipelineContext, candidate: CandidateDoc) {
 }
 
 describe('processCandidate', () => {
-  it('imports, prices and publishes the cargo pants with listing fixes applied', async () => {
-    const rs = Array.from({ length: 34 }, () => review());
+  it('vets, prices and readies the cargo pants for review with listing fixes applied', async () => {
+    const rs = Array.from({ length: 70 }, () => review());
     const repo = new MemoryRepo();
     // The real listing has no Material attribute; give it one so the listing can go live.
     const product = fx('product_cargo.json');
@@ -130,26 +135,31 @@ describe('processCandidate', () => {
     const model = new FakeModel(cleanAnswers(rs));
     const out = await processCandidate(ctx(repo, fetchImpl, model, reviewSet(rs)), cand('3256811859422872'));
 
-    expect(out.outcome).toBe('published');
+    expect(out.outcome).toBe('ready');
     const p = repo.products.get('ae-1005012045737624')!;
-    expect(p.status).toBe('live');
+    expect(p.status).toBe('pending_review'); // nothing goes live without your three checks
+    expect(p.holdReasons).toEqual([]);
     expect(p.material).toBe('Polyester');
     expect(p.origin).toBe('Imported');
-    // $22.93 + $2.99 = $25.92 landed × 1.8 → $46.99; XXL $21.78 + $2.99 → $44.31 → $44.99
-    expect(p.priceToCents).toBe(4699);
-    expect(p.priceFromCents).toBe(4499);
+    // ($25.92 + $6.38 reserve + $8 + $0.30) ÷ 0.971 → $41.99; XXL $24.77 landed → $40.99
+    expect(p.priceToCents).toBe(4199);
+    expect(p.priceFromCents).toBe(4099);
     expect(p.variants.every((v) => v.color === '3-Pack: Black, Olive, Khaki')).toBe(true);
-    expect(p.sizeChart?.rows[0]?.garment.waist).toBeCloseTo(29.1, 1);
+    expect(p.sizeChart?.label).toBe('Supplier measurements');
+    expect(p.sizeChart?.measurementType).toBe('garment');
+    expect(p.sizeChart?.rows[0]?.measurements.waist).toBeCloseTo(29.1, 1);
+    expect(p.sizeChart?.rows.find((r) => r.size === 'L')?.note).toMatch(/size down/);
+    expect(repo.sourcing.get(p.id)?.supplier?.title).toBeTruthy();
     const s = repo.sourcing.get(p.id)!;
     expect(s.skus.find((k) => k.aeSkuId === '12000057474585433')?.landedCents).toBe(2592);
     expect(repo.vetting.get(p.id)?.result.decision).toBe('import');
-    expect(repo.candidates.get('3256811859422872')?.status).toBe('published');
+    expect(repo.candidates.get('3256811859422872')?.status).toBe('held');
     expect(repo.work.size).toBe(0);
     expect(model.calls).toEqual(expect.arrayContaining(['check product photos', 'read customer reviews', 'write the US product page']));
   });
 
   it('holds the real cargo listing for review because its material is unknown', async () => {
-    const rs = Array.from({ length: 34 }, () => review());
+    const rs = Array.from({ length: 70 }, () => review());
     const repo = new MemoryRepo();
     const out = await processCandidate(ctx(repo, aeFetch('product_cargo.json'), new FakeModel({ ...cleanAnswers(rs), 'read customer reviews': () => ({ issues: [], fit: [], materialFromReviews: null, summary: '' }) }), reviewSet(rs)), cand('3256811859422872'));
     expect(out.outcome).toBe('held');
@@ -158,8 +168,38 @@ describe('processCandidate', () => {
     expect(p.holdReasons.join(' ')).toMatch(/Material is not confirmed/);
   });
 
+  it('flags delivery promises over 7 days', async () => {
+    const rs = Array.from({ length: 70 }, () => review());
+    const repo = new MemoryRepo();
+    const product = fx('product_cargo.json');
+    product.aliexpress_ds_product_get_response.result.ae_item_properties.ae_item_property.push({ attr_name: 'Material', attr_value: 'POLYESTER' });
+    const fetchImpl = aeFetch('product_cargo.json', 'freight_paid.json', (b) => (b.get('method') === 'aliexpress.ds.product.get' ? product : undefined));
+    const out = await processCandidate({ ...ctx(repo, fetchImpl, new FakeModel(cleanAnswers(rs)), reviewSet(rs)), config: DEFAULT_CONFIG }, cand('3256811859422872'));
+    expect(out.outcome).toBe('held');
+    expect(repo.products.get('ae-1005012045737624')!.holdReasons.join(' ')).toMatch(/Up to 10 days \(limit 7\)/);
+  });
+
+  it('compares buyer photos with the gallery and rejects a product buyers say looks different', async () => {
+    const rs = Array.from({ length: 70 }, (_, i) => review(i < 3 ? { imageUrls: [`https://ae01.alicdn.com/kf/buyer${i}.jpg`] } : {}));
+    const repo = new MemoryRepo();
+    const product = fx('product_cargo.json');
+    product.aliexpress_ds_product_get_response.result.ae_item_properties.ae_item_property.push({ attr_name: 'Material', attr_value: 'POLYESTER' });
+    const fetchImpl = aeFetch('product_cargo.json', 'freight_paid.json', (b) => (b.get('method') === 'aliexpress.ds.product.get' ? product : undefined));
+    const model = new FakeModel({
+      ...cleanAnswers(rs),
+      "compare a clothing product's listing photos": () => ({
+        photos: [{ photo: 1, match: 'mismatch', detail: 'different print' }, { photo: 2, match: 'mismatch', detail: 'shorter cut' }, { photo: 3, match: 'matches', detail: '' }],
+        quality: 'Loose threads at the hem',
+      }),
+    });
+    const out = await processCandidate(ctx(repo, fetchImpl, model, reviewSet(rs)), cand('3256811859422872'));
+    expect(model.calls).toContain("compare a clothing product's listing photos");
+    expect(out.outcome).toBe('rejected');
+    expect(out.reasons.join(' ')).toMatch(/doesn't match the product photos/);
+  });
+
   it('rejects a fake-postage seller and blocks its other listings', async () => {
-    const rs = Array.from({ length: 50 }, () => review({ skuInfo: 'Color:Black Size:M Ships From:United States' }));
+    const rs = Array.from({ length: 70 }, () => review({ skuInfo: 'Color:Black Size:M Ships From:United States' }));
     rs[0]!.text = 'Flagged for fraudulent shipping, they used fake postage';
     rs[0]!.stars = 1;
     const repo = new MemoryRepo();
@@ -202,48 +242,52 @@ describe('processCandidate', () => {
 });
 
 describe('monitorProduct', () => {
-  it('pauses a live product whose supplier cost jumps more than 15%', async () => {
-    const rs = Array.from({ length: 34 }, () => review());
+  async function liveCargo() {
+    const rs = Array.from({ length: 70 }, () => review());
     const repo = new MemoryRepo();
     const product = fx('product_cargo.json');
     product.aliexpress_ds_product_get_response.result.ae_item_properties.ae_item_property.push({ attr_name: 'Material', attr_value: 'POLYESTER' });
-    const c = ctx(repo, aeFetch('product_cargo.json', 'freight_paid.json', (b) => (b.get('method') === 'aliexpress.ds.product.get' ? product : undefined)), new FakeModel(cleanAnswers(rs)), reviewSet(rs));
+    const model = new FakeModel(cleanAnswers(rs));
+    const c = ctx(repo, aeFetch('product_cargo.json', 'freight_paid.json', (b) => (b.get('method') === 'aliexpress.ds.product.get' ? product : undefined)), model, reviewSet(rs));
     await processCandidate(c, cand('3256811859422872'));
-    const p = repo.products.get('ae-1005012045737624')!;
-    expect(p.status).toBe('live');
+    await repo.updateProduct('ae-1005012045737624', { status: 'live' });
+    const withProduct = (pr: unknown) => ({ ...c, ae: new AliExpressClient({ appKey: 'k', appSecret: 's', tokens: repo.tokenStore(), fetchImpl: aeFetch('product_cargo.json', 'freight_paid.json', (b) => (b.get('method') === 'aliexpress.ds.product.get' ? pr : undefined)), sleep: async () => {}, minIntervalMs: 0 }) });
+    return { repo, product, withProduct, c, rs, model, p: repo.products.get('ae-1005012045737624')! };
+  }
+  const priced = (product: unknown, dollars: string) => {
+    const x = structuredClone(product) as { aliexpress_ds_product_get_response: { result: { ae_item_sku_info_dtos: { ae_item_sku_info_d_t_o: { offer_sale_price: string }[] } } } };
+    for (const s of x.aliexpress_ds_product_get_response.result.ae_item_sku_info_dtos.ae_item_sku_info_d_t_o) s.offer_sale_price = dollars;
+    return x;
+  };
 
-    const pricier = structuredClone(product);
-    for (const s of pricier.aliexpress_ds_product_get_response.result.ae_item_sku_info_dtos.ae_item_sku_info_d_t_o) s.offer_sale_price = '29.99';
-    const c2: PipelineContext = { ...c, ae: new AliExpressClient({ appKey: 'k', appSecret: 's', tokens: repo.tokenStore(), fetchImpl: aeFetch('product_cargo.json', 'freight_paid.json', (b) => (b.get('method') === 'aliexpress.ds.product.get' ? pricier : undefined)), sleep: async () => {}, minIntervalMs: 0 }) };
-    const res = await monitorProduct(c2, p);
-    expect(res.changed).toBe(true);
+  it('pauses when a cost rise drops profit below the minimum, not before', async () => {
+    const { repo, product, withProduct, p } = await liveCargo();
+    await monitorProduct(withProduct(priced(product, '22.95')), p);
+    expect(repo.products.get(p.id)!.status).toBe('live');
+    const res = await monitorProduct(withProduct(priced(product, '25.00')), repo.products.get(p.id)!);
     expect(repo.products.get(p.id)!.status).toBe('paused');
-    expect(res.notes.join(' ')).toMatch(/cost is up/);
+    expect(res.notes.join(' ')).toMatch(/under the \$7\.00 minimum/);
   });
 
-  async function liveCargo() {
-    const rs = Array.from({ length: 34 }, () => review());
-    const repo = new MemoryRepo();
-    const product = fx('product_cargo.json');
-    product.aliexpress_ds_product_get_response.result.ae_item_properties.ae_item_property.push({ attr_name: 'Material', attr_value: 'POLYESTER' });
-    const c = ctx(repo, aeFetch('product_cargo.json', 'freight_paid.json', (b) => (b.get('method') === 'aliexpress.ds.product.get' ? product : undefined)), new FakeModel(cleanAnswers(rs)), reviewSet(rs));
-    await processCandidate(c, cand('3256811859422872'));
-    const withProduct = (pr: unknown) => ({ ...c, ae: new AliExpressClient({ appKey: 'k', appSecret: 's', tokens: repo.tokenStore(), fetchImpl: aeFetch('product_cargo.json', 'freight_paid.json', (b) => (b.get('method') === 'aliexpress.ds.product.get' ? pr : undefined)), sleep: async () => {}, minIntervalMs: 0 }) });
-    return { repo, product, withProduct, p: repo.products.get('ae-1005012045737624')! };
-  }
-
-  it('measures cost drift from the priced cost, so small rises add up', async () => {
-    const { repo, product, withProduct, p } = await liveCargo();
-    const priceTo = (dollars: string) => {
-      const x = structuredClone(product);
-      for (const s of x.aliexpress_ds_product_get_response.result.ae_item_sku_info_dtos.ae_item_sku_info_d_t_o) s.offer_sale_price = dollars;
-      return x;
-    };
-    // +8–13%: still live. Another rise: now 21–27% above the priced cost → paused.
-    await monitorProduct(withProduct(priceTo('25.00')), p);
-    expect(repo.products.get(p.id)!.status).toBe('live');
-    await monitorProduct(withProduct(priceTo('28.40')), repo.products.get(p.id)!);
-    expect(repo.products.get(p.id)!.status).toBe('paused');
+  it('flags supplier listing changes and unfixable problems in new reviews', async () => {
+    const { repo, product, withProduct, p, rs } = await liveCargo();
+    const changed = structuredClone(product);
+    changed.aliexpress_ds_product_get_response.result.ae_item_base_info_dto.subject = 'New title from the supplier';
+    const fresh = review({ text: 'The print peeled off after one wash', stars: 2 });
+    const model = new FakeModel({
+      'read customer reviews': () => ({ issues: [{ category: 'wash_durability', reviewIds: [fresh.id], quote: 'print peeled off after one wash' }], fit: [], materialFromReviews: null, summary: '' }),
+    });
+    const c = { ...withProduct(changed), model: () => model, fetchReviewPage: pagesOf(reviewSet([fresh, ...rs])) };
+    const res = await monitorProduct(c, p);
+    expect(res.notes.join(' ')).toMatch(/changed the title/);
+    expect(res.notes.join(' ')).toMatch(/New review: Print peels/);
+    const flags = repo.products.get(p.id)!.flags ?? [];
+    expect(flags.map((f) => f.text).join(' ')).toMatch(/New review/);
+    expect(repo.products.get(p.id)!.status).toBe('live'); // a flag, not a pause
+    // The same review isn't reported twice.
+    const again = await monitorProduct({ ...c, model: () => new FakeModel({}) }, repo.products.get(p.id)!);
+    expect(again.notes.join(' ')).not.toMatch(/New review/);
+    expect(again.notes.join(' ')).not.toMatch(/changed the title/); // flagged once, then the new baseline
   });
 
   it('pauses when any of the three store ratings drops below the minimum', async () => {

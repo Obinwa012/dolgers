@@ -3,8 +3,8 @@
 ## The principle
 
 The AI finds and quotes evidence; **code makes every decision.** Thresholds live in one config
-document, every issue category has a fixed bucket in code, and a product only goes live
-automatically when no rule asks for a person to look.
+document, every issue category has a fixed bucket in code, and **nothing goes live by itself**:
+every product that passes waits for a person to tick three checks and publish it.
 
 ## Men’s clothing only
 
@@ -19,7 +19,7 @@ that each save their progress to Firestore:
 - **Jobs** (`core/jobs.ts`, `jobs/{id}`): an import, vet or monitor run. The Import & vet page calls
   `stepJob` in a loop while the tab is open. A lock stops two tabs advancing one job at once.
 - **Work** (`core/stages.ts`, `work/{subId}`): one candidate’s vetting, as stages: fetch → reviews →
-  images → analysis → decide → seller chart → US chart → shipping → listing → save. A request runs
+  images → analysis → photos → decide → seller chart → size guide → shipping → listing → save. A request runs
   stages until it reaches one that calls Claude (at most one Claude call per request) or 25 seconds
   pass, then saves. Reviews are stored in `work/{subId}/parts`.
 - **Retries:** a stage is retried up to 3 times, counting requests that were cut off before they
@@ -31,72 +31,89 @@ that each save their progress to Firestore:
 
 ## The pipeline
 
-```
-feeds ──▶ candidates ──▶ 1 screen ──▶ 2 seller ──▶ 3 reviews + trust ──▶ 4 AI evidence ──▶ 5 decide ──▶ 6 listing ──▶ products
- import      queue        (API)       history       (no AI spend yet)     images, reviews     rules       size chart,      live or
-                                                                                                         copy, SEO,       pending_review
-                                                                                                         prices
-                                                                    monitor (on demand) ◀────────────────────────────────────────┘
-```
+All numbers below are defaults, editable in Settings → DOLGERS rules.
 
-1. **Screen** (`vetting/engine.ts › screen`, one `product.get` + one freight quote)
-   - The listing is on sale.
-   - Only variants that ship from the United States and have stock are kept.
-   - All three store ratings are ≥ 4.5.
-   - No brand or celebrity terms in the title.
-   - A US shipping quote exists, with delivery within 15 days.
-   - At least 10 reviews.
-   - **Flagged for review:** a "Priority" carrier charging ≤ $3.99 on an item ≤ $8. That's below the carrier's normal cost and a known sign of label fraud.
-2. **Seller history.** A blocked seller's listings are rejected before any review is fetched. A store whose shipping fingerprint matches a blocked store with a nearby store ID is flagged as a possible sibling.
-3. **Reviews and trust** (`reviews/reviews.ts`, `trustCheck`). All review pages are fetched from AliExpress's public review endpoint. They must be:
-   - **The listing's own:** product type `ORDINARY`, with no "reviews from various sellers" notice.
-   - **Complete.**
-   - **≥ 90% for US-warehouse variants.**
-   - **≤ 10% shipped by China carriers.**
+### Phase 1: free checks (AliExpress API, no AI)
 
-   Buyers are counted after grouping one buyer's multi-item order as one. Too few buyers stops here, **before any AI is paid for**.
-4. **AI evidence** (`ai/`). Claude, with structured outputs:
-   - checks gallery and variant photos for likenesses, logos and licensed characters;
-   - lists every complaint under a fixed category, with the review ids and a verbatim quote;
-   - extracts fit comments, including the buyer's height and weight.
-5. **Decide** (`vetting/engine.ts › vet`, `vetting/issues.ts`).
-   - **A, fixable on the listing** (runs large, decorative zippers, thin fabric): turned into required listing fixes. Doesn't count toward the problem rate.
-   - **B, absorbable** (holes, misprints, wrong item, one lost parcel, unexplained 1–3★): counts toward the **1-in-40 cap**. An A tag never excuses a 1–3★ review.
-   - **C, systemic** (peeling after washing, material mismatch, inconsistent sizing on the same measurement, quality dropping on repeat orders, ≥2 non-deliveries, fake tracking, IP):
-     - rejects at 2 buyers, or at 1 for fake tracking, IP and safety;
-     - at 1 buyer, needs review.
-   - **Quote check:** an issue whose quote isn't found in the cited review can't reject on a single report or strike the seller.
-   - **Seller-level C issues** block the seller and pause its live products.
-   - **Tiers:**
+1. **Store memory.** A blocked store is rejected. A store checked in the last 14 days with any rating
+   under 4.5 is screened out without calling AliExpress.
+2. **Screen the listing** (one `product.get`, one shipping quote):
+   - **Screened out:** off sale; no in-stock US variant; any store rating under 4.5 (or none); no US
+     shipping quote; a blocked word in the title. Blocked words are brands, characters and
+     celebrities, plus “dupe”, “inspired” and “replica”. Near-miss spellings of brands also count
+     (“Addidas”, “Carhart”, “Calvin Klien”).
+   - **Not enough data:** fewer than 20 reviews.
+   - **Flagged:** delivery promise over 7 days; a “Priority” carrier at $3.99 or less on an item at
+     $8 or less.
+3. **Reviews** (up to 500, the listing's own). Not enough data unless:
+   - they aren't pooled across sellers;
+   - every page was fetched;
+   - at least 90% say “Ships From: United States”;
+   - at most 10% shipped by a China carrier;
+   - at least 5 were written in the last 90 days.
+4. **Buyers.** One buyer's multi-item order counts once. Under 20 buyers, or 20–59 without a strong
+   seller (all ratings 4.7+), stops here, before any AI is paid for.
 
-     | Tier | Requirement |
-     | --- | --- |
-     | Import | ≥ 30 buyers and ≥ 10 with text |
-     | Probation | ≥ 10 buyers and a strong seller (all ratings ≥ 4.7) |
-     | Insufficient data | Anything else; rechecked in 30 days |
-6. **Listing** (`ai/size-chart.ts`, `listing/listing.ts`)
-   - **Size chart:** the seller's chart is read from the description images and converted to inches. A US guide is then built from that chart, US buyers' fit reviews and US reference sizing.
-   - **Copy:** Claude writes the title, bullets, FAQ, SEO fields, variant colour names and alt text from a numbered **evidence list**. `validateListing` then rejects:
-     - "Made in USA" in any form;
-     - puffery;
-     - performance claims not in the evidence;
-     - materials other than the confirmed one;
-     - brand words;
-     - supplier colour codes;
-     - listing fixes that weren't applied;
-     - an unknown material.
+### Phase 2: AI evidence (Claude finds and quotes; code decides)
 
-     Each problem holds the product.
-   - **Pricing:** per variant, retail = max(landed × 1.8, landed + $7), rounded up to x.99, where landed = supplier price + US shipping for that size.
-   - **Publishing:** only a plain *import* with zero hold reasons is published as `live`. Everything else lands as `pending_review` with the reasons listed.
-7. **Monitor** (the Monitor button on Import & vet). For every live, held and paused product:
-   - **Pause** when:
-     - the supplier listing is off sale;
-     - any store rating drops below 4.5;
-     - the seller is blocked;
-     - no variant is in stock with US shipping;
-     - the landed cost rises more than 15% above the cost the price was set from.
-   - **Stock:** out-of-stock variants are marked unavailable.
+5. **Photos for IP:** gallery and variant photos. Logos, celebrities and characters reject. A design
+   that copies a known brand's product is named with a reason, as a flag.
+6. **Reviews:** every complaint in a fixed category with a verbatim quote, fit comments and the
+   material buyers describe. Recent reviews (last 90 days) come first and lead the summary.
+7. **Buyer photos vs gallery:** up to 8 buyer photos (low-star and recent first) are compared with
+   the gallery. A clear mismatch in design, cut or print counts as an unfixable (C) problem for
+   that buyer. Claude also describes the fabric and stitching it can see.
+
+### Phase 3: decide (code only, `vetting/engine.ts`, `vetting/stats.ts`)
+
+- **A** (fixable on the listing: runs small, decorative zippers): becomes a required listing fix.
+- **B** (customer service absorbs it: a hole, wrong item, an unexplained 1–3★): the one-sided 95%
+  Wilson upper bound on the share of buyers with a problem must be 5% or less. With no problems
+  that takes 52 buyers; with one, 87. If even the observed rate is over 5%, it's rejected;
+  otherwise more buyers are needed and it's rechecked.
+- **C** (can't be fixed: peeling after washing, wrong material, inconsistent sizing, not as
+  pictured): rejects at 2+ buyers and more than 1% of buyers; one report flags it. Fake tracking,
+  IP and safety reject on one verified report. Seller-level C problems block the store and pause
+  its products.
+- **Quotes** the code can't find in the cited review flag the product (they can't reject on their own).
+- **Recency:** a problem rate in the last 90 days over twice the overall rate is flagged.
+- **Fake reviews** are flagged: half of all reviews on 3 days, 3+ near-identical reviews, or 80%+
+  of all ratings 5★ with no text.
+- **Tier:** *Import* = 60+ buyers, 15+ written reviews, within the bound. *Probation* = 20–59
+  buyers, all store ratings 4.7+, within its own bound (also 5% by default, which in practice means
+  52+ problem-free buyers). Anything else: not enough data, rechecked in 30 days.
+
+### Phase 4: build the listing
+
+- **Size guide:** the supplier's chart, converted to inches and labelled “Supplier measurements”,
+  saying whether it measures the garment or the body. US buyers' fit comments add notes only where
+  two or more agree. No generic US sizing is blended in.
+- **Shipping per size;** a missing quote holds the product.
+- **Copy:** title, bullets, FAQ, SEO from a numbered evidence list. Rejected text: “Made in USA”,
+  unsupported claims, brand words, supplier colour codes, unapplied listing fixes, an unconfirmed
+  material, and no “Imported”.
+- **Price** per variant: (cost + return reserve + $8 profit + $0.30) ÷ 0.971, rounded up to $X.99,
+  where cost = item + US shipping and the reserve = 20% × (cost + $6). $13 → $25.99.
+
+### Phase 5: your review (Products → Needs review)
+
+Each product page shows buyers, the upper bound and recent reviews, the top quoted complaints,
+gallery photos beside buyer photos (each with Google Lens and TinEye buttons), and every flag with
+its reason. Publish unlocks only after three ticks: reverse image search done, no brand
+resemblance, listing and size chart read. Or delete with a reason; Products → Deleted groups the
+last 30 days' reasons for a monthly look.
+
+### Phase 6: after publishing
+
+- **Monitor** runs daily (`.github/workflows/monitor.yml` calls `/api/cron/monitor`, which starts at
+  most one run per 20 hours) and from the Monitor button. It hides out-of-stock sizes, pauses when
+  none are left, when the listing goes off sale, a store rating drops under 4.5 or the seller is
+  blocked, and when a cost rise drops profit below $7. It flags supplier changes to the title,
+  photos or material, and unfixable problems in reviews it hasn't seen before.
+- **Your orders:** until orders flow in automatically, record orders, refunds, complaints and
+  disputes on the product page. One unfixable complaint pauses the product; a refund rate over
+  10% (after 10 orders) pauses it; a payment dispute raises an urgent flag. Probation pauses a
+  product with too many defects in its first 40 orders.
 
 ## Data model (Firestore)
 
@@ -115,6 +132,7 @@ access to the database except reading live products (for a future storefront or 
 | `config/pipeline` | Thresholds, AI models, feeds, pages per import (Settings → DOLGERS rules). |
 | `config/secrets` | AliExpress app key/secret/tokens and the Claude API key. Never sent to a browser. |
 | `users/{uid}` | `admin: true` marks a dashboard admin. |
+| `deletions/{id}` | Products deleted at review, with the reason. |
 | `sessions/{token}`, `oauth_states/{state}` | Sign-in sessions and the one-time AliExpress connect state. |
 
 Money is integer cents. Timestamps are epoch milliseconds. Queries avoid composite indexes, so

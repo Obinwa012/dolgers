@@ -8,25 +8,26 @@ import { ProductUnavailableError } from './aliexpress/parse.ts';
 import { ANALYSIS_CHUNK, analyzeReviewChunk, mergeAnalyses, textReviews } from './ai/analyze-reviews.ts';
 import { checkImages } from './ai/check-images.ts';
 import type { AiModels, StructuredModel } from './ai/claude.ts';
-import { buildUsSizeChart, extractSellerSizeChart } from './ai/size-chart.ts';
-import type { CandidateDoc, ProductDoc, SellerDoc, SourcingDoc, SourcingSku, VettingDoc, WorkState } from './firestore/model.ts';
+import { compareBuyerPhotos, pickBuyerPhotos } from './ai/compare-photos.ts';
+import { buildSizeGuide, extractSellerSizeChart, normSize } from './ai/size-chart.ts';
+import type { CandidateDoc, ProductDoc, ProductFlag, SellerDoc, SourcingDoc, SourcingSku, VettingDoc, WorkState } from './firestore/model.ts';
 import { MAX_ATTEMPTS, type Repo } from './firestore/repo.ts';
 import { writeListing } from './listing/listing.ts';
 import { assembleReviews, fetchReviewPage, groupBuyers } from './reviews/reviews.ts';
-import type { FreightQuote, ProductSnapshot, ReviewSet, Sku } from './types.ts';
+import type { FreightQuote, ProductSnapshot, Review, ReviewSet, Sku } from './types.ts';
 import type { VettingConfig } from './vetting/config.ts';
 import { fitEvidenceFor, screen, trustCheck, vet, type VetResult } from './vetting/engine.ts';
 import { ISSUE_RULES } from './vetting/issues.ts';
-import { relativeChange, retailPriceCents } from './vetting/pricing.ts';
+import { profitCents, retailPriceCents } from './vetting/pricing.ts';
 
-export const VETTING_VERSION = 2;
+export const VETTING_VERSION = 3;
 const DAY = 24 * 3600 * 1000;
 /** Review pages fetched per listing: 25 pages = 500 most relevant reviews. */
 export const MAX_REVIEW_PAGES = 25;
 /** How long one request keeps working before it saves and returns. */
 const STEP_BUDGET_MS = 25_000;
 /** Stages that call Claude: one per request, so a slow model call can't stack with another. */
-const AI_STAGES = new Set(['images', 'analysis', 'seller_chart', 'us_chart', 'listing']);
+const AI_STAGES = new Set(['images', 'analysis', 'photos', 'seller_chart', 'us_chart', 'listing']);
 
 export interface PipelineContext {
   ae: AliExpressClient;
@@ -51,7 +52,8 @@ export const US_FEEDS = [
 /** DOLGERS sells men's clothing only. */
 export const MENS_CLOTHING = '200000343';
 
-export type Outcome = 'published' | 'held' | 'insufficient_data' | 'rejected' | 'screened_out' | 'error';
+/** ready = passed every check and waits for your review; held = waits for you with flags. */
+export type Outcome = 'ready' | 'held' | 'insufficient_data' | 'rejected' | 'screened_out' | 'error';
 
 export interface StepResult {
   work: WorkState | null;
@@ -125,6 +127,7 @@ async function runStage(ctx: PipelineContext, w: WorkState): Promise<StepResult>
     case 'reviews': return stageReviews(ctx, w);
     case 'images': return stageImages(ctx, w);
     case 'analysis': return stageAnalysis(ctx, w);
+    case 'photos': return stagePhotos(ctx, w);
     case 'decide': return stageDecide(ctx, w);
     case 'seller_chart': return stageSellerChart(ctx, w);
     case 'us_chart': return stageUsChart(ctx, w);
@@ -160,7 +163,7 @@ async function finish(
   if (mainId && (outcome === 'rejected' || outcome === 'screened_out' || outcome === 'insufficient_data')) {
     const existing = await ctx.repo.getProduct(`ae-${mainId}`);
     if (existing && (existing.status === 'live' || existing.status === 'pending_review')) {
-      await ctx.repo.updateProduct(existing.id, { status: 'paused', holdReasons: [`Re-vet: ${reasons[0] ?? outcome}`], updatedAt: now });
+      await ctx.repo.updateProduct(existing.id, { status: 'paused', holdReasons: [`Re-vet: ${reasons[0] ?? outcome}`], review: CLEARED_CHECKS, updatedAt: now });
     }
   }
   await ctx.repo.deleteWork(w.subId);
@@ -279,6 +282,7 @@ async function stageAnalysis(ctx: PipelineContext, w: WorkState): Promise<StepRe
     const part = await analyzeReviewChunk(ctx.model(), ctx.models, withText.slice(i * ANALYSIS_CHUNK, (i + 1) * ANALYSIS_CHUNK), {
       title: w.product!.title,
       material: w.product!.attributes.Material ?? null,
+      now: (ctx.now ?? Date.now)(),
     });
     w.analysisParts = [...(w.analysisParts ?? []), part];
     w.analysisChunk = i + 1;
@@ -286,6 +290,17 @@ async function stageAnalysis(ctx: PipelineContext, w: WorkState): Promise<StepRe
   }
   w.analysis = mergeAnalyses(w.analysisParts ?? [], reviews);
   w.analysisParts = [];
+  w.stage = 'photos';
+  return { work: w, finished: false };
+}
+
+/** Gallery photos next to what buyers say arrived. */
+async function stagePhotos(ctx: PipelineContext, w: WorkState): Promise<StepResult> {
+  const reviews = await ctx.repo.getWorkReviews(w.subId);
+  const picked = pickBuyerPhotos(reviews, (ctx.now ?? Date.now)());
+  w.photoCheck = picked.length
+    ? await compareBuyerPhotos(ctx.model(), ctx.models, w.product!.images, picked, w.product!.title, ctx.fetchImpl)
+    : { compared: 0, mismatches: [], quality: 'No buyer photos' };
   w.stage = 'decide';
   return { work: w, finished: false };
 }
@@ -302,20 +317,22 @@ async function stageDecide(ctx: PipelineContext, w: WorkState): Promise<StepResu
     reviews,
     analysis: w.analysis ?? null,
     imageCheck: w.imageCheck?.checked ? w.imageCheck : null,
+    photoCheck: w.photoCheck ?? null,
     seller: { storeId: seller.storeId, name: seller.name, blocked: false, blockReasons: [], linkedTo: seller.linkedTo },
     config: ctx.config,
+    now,
   });
   await recordSeller(ctx, seller, result, now);
   w.result = result;
 
   if (result.decision === 'reject' || result.decision === 'insufficient_data') {
-    await ctx.repo.saveVetting(vettingDoc(ctx, w, now));
+    await ctx.repo.saveVetting(await vettingDoc(ctx, w, now));
     return result.decision === 'reject'
       ? finish(ctx, w, 'rejected', 'rejected', result.reasons, null)
       : finish(ctx, w, 'insufficient_data', 'insufficient_data', result.reasons, ctx.config.recheckAfterDays);
   }
-  const hold: string[] = [];
-  if (result.decision !== 'import') hold.push(...result.reasons.filter((r) => r.startsWith('Needs review')), `Decision: ${result.decision}`);
+  const hold: string[] = [...(result.flags ?? [])];
+  if (result.decision === 'probation') hold.push('Probation: fewer buyers than a full import; take a slower look');
   w.material = resolveMaterial(product.attributes.Material ?? null, verifiedReviewMaterial(w.analysis?.materialFromReviews ?? null, reviews), hold);
   w.holdReasons = hold;
   w.stage = 'seller_chart';
@@ -325,8 +342,12 @@ async function stageDecide(ctx: PipelineContext, w: WorkState): Promise<StepResu
 async function stageSellerChart(ctx: PipelineContext, w: WorkState): Promise<StepResult> {
   const p = w.product!;
   w.sellerChart = await extractSellerSizeChart(ctx.model(), ctx.models, p.descriptionImages, p.attributes.size_info, ctx.fetchImpl);
-  if (!w.sellerChart.found) w.holdReasons = [...(w.holdReasons ?? []), 'No seller size chart found; size guide is based on reviews and US standards only'];
-  w.stage = sizesSold(w).length ? 'us_chart' : 'shipping';
+  if (!w.sellerChart.found) {
+    w.holdReasons = [...(w.holdReasons ?? []), 'No supplier size chart found, so the listing has no size guide'];
+  } else if (w.sellerChart.measurementType === 'unknown') {
+    w.holdReasons = [...(w.holdReasons ?? []), "The supplier's chart doesn't say whether it measures the garment or the body"];
+  }
+  w.stage = sizesSold(w).length && w.sellerChart.found ? 'us_chart' : 'shipping';
   if (w.stage === 'shipping') w.usChart = null;
   return { work: w, finished: false };
 }
@@ -334,14 +355,17 @@ async function stageSellerChart(ctx: PipelineContext, w: WorkState): Promise<Ste
 async function stageUsChart(ctx: PipelineContext, w: WorkState): Promise<StepResult> {
   const p = w.product!;
   const reviews = await ctx.repo.getWorkReviews(w.subId);
-  w.usChart = await buildUsSizeChart(ctx.model(), ctx.models, {
+  const sold = sizesSold(w);
+  w.usChart = await buildSizeGuide(ctx.model(), ctx.models, {
     title: p.title,
-    department: 'men',
-    kind: garmentKind(w.candidate.subcategoryName, p.title),
-    sizesSold: sizesSold(w),
+    sizesSold: sold,
     seller: w.sellerChart!,
     usFit: fitEvidenceFor(reviews, w.analysis ?? null, 'US'),
   });
+  const charted = new Set((w.usChart?.rows ?? []).map((r) => normSize(r.size)));
+  const missing = sold.filter((s) => !charted.has(normSize(s)));
+  if (!w.usChart) w.holdReasons = [...(w.holdReasons ?? []), "The supplier's chart doesn't cover the sizes sold, so there is no size guide"];
+  else if (missing.length) w.holdReasons = [...(w.holdReasons ?? []), `Size guide is missing ${missing.join(', ')}`];
   w.stage = 'shipping';
   return { work: w, finished: false };
 }
@@ -369,7 +393,7 @@ async function stageListing(ctx: PipelineContext, w: WorkState): Promise<StepRes
       skus: usSkus(w),
       department: 'men',
       material: w.material ?? null,
-      sizeChart: w.usChart ?? null,
+      sizeChart: w.usChart && 'columns' in w.usChart ? w.usChart : null,
       listingFixes: w.result!.listingFixes,
       delivery: sc.shipping ? { minDays: sc.shipping.minDays, maxDays: sc.shipping.maxDays } : null,
       reviewSummary: w.analysis?.summary ?? '',
@@ -411,9 +435,11 @@ async function stageSave(ctx: PipelineContext, w: WorkState): Promise<StepResult
   const prices = variants.map((v) => v.priceCents);
   const existing = await ctx.repo.getProduct(productId);
   if (existing?.status === 'retired') holdReasons.push('Previously retired; not republishing automatically');
-  const status: ProductDoc['status'] =
-    existing?.status === 'retired' ? 'retired' : result.decision === 'import' && holdReasons.length === 0 ? 'live' : 'pending_review';
-  const usChart = w.usChart ?? null;
+  // Nothing goes live by itself: every product waits for your three checks in the dashboard.
+  const status: ProductDoc['status'] = existing?.status === 'retired' ? 'retired' : 'pending_review';
+  // Work started by the previous version may hold the old blended chart: don't use it.
+  const usChart = w.usChart && 'columns' in w.usChart ? w.usChart : null;
+  if (w.usChart && !usChart) holdReasons.push('Size guide was built by the old method; re-vet to rebuild it from supplier measurements');
 
   const productDoc: ProductDoc = {
     id: productId,
@@ -438,7 +464,9 @@ async function stageSave(ctx: PipelineContext, w: WorkState): Promise<StepResult
     delivery: { minDays: sc.shipping?.minDays ?? null, maxDays: sc.shipping?.maxDays ?? null },
     material: w.material ?? null,
     origin: 'Imported',
-    sizeChart: usChart ? { fitType: usChart.fitType, rows: usChart.rows, fitNotes: usChart.fitNotes } : null,
+    sizeChart: usChart
+      ? { label: usChart.label, unit: usChart.unit, measurementType: usChart.measurementType, columns: usChart.columns, rows: usChart.rows, fitType: usChart.fitType, fitNotes: usChart.fitNotes }
+      : null,
     probation: existing?.probation ?? {
       active: true, orders: 0, defects: 0,
       maxDefects: result.decision === 'import' ? 2 : 1,
@@ -446,7 +474,9 @@ async function stageSave(ctx: PipelineContext, w: WorkState): Promise<StepResult
     },
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
-    publishedAt: status === 'live' ? existing?.publishedAt ?? now : existing?.publishedAt ?? null,
+    publishedAt: existing?.publishedAt ?? null,
+    quality: existing?.quality,
+    flags: existing?.flags,
   };
   const sourcing: SourcingDoc = {
     productId,
@@ -460,15 +490,30 @@ async function stageSave(ctx: PipelineContext, w: WorkState): Promise<StepResult
     supplierUrl: `https://www.aliexpress.com/item/${product.mainId}.html`,
     lastCheckedAt: now,
     lastCheck: { ok: true, notes: ['Imported'] },
+    supplier: { title: product.title, images: product.images.map(imageKey), material: product.attributes.Material ?? null },
+    reviewWatch: { seenIds: (await ctx.repo.getWorkReviews(w.subId)).map((r) => r.id).slice(0, 1000), lastCheckedAt: now },
     updatedAt: now,
   };
-  await ctx.repo.saveProduct(productDoc, sourcing, vettingDoc(ctx, w, now));
-  const outcome: Outcome = status === 'live' ? 'published' : 'held';
-  return finish(ctx, w, outcome, outcome === 'published' ? 'published' : 'held', status === 'live' ? result.reasons : holdReasons, null, productId);
+  await ctx.repo.saveProduct(productDoc, sourcing, await vettingDoc(ctx, w, now));
+  const outcome: Outcome = result.decision === 'import' && holdReasons.length === 0 ? 'ready' : 'held';
+  return finish(ctx, w, outcome, 'held', outcome === 'ready' ? result.reasons : holdReasons, null, productId);
 }
 
-function vettingDoc(ctx: PipelineContext, w: WorkState, now: number): VettingDoc {
+/** An image's file name: AliExpress serves the same photo from several hosts. */
+export function imageKey(url: string): string {
+  return url.split('?')[0]!.split('/').pop()!.replace(/_\d+x\d+.*$/, '');
+}
+
+async function vettingDoc(ctx: PipelineContext, w: WorkState, now: number): Promise<VettingDoc> {
+  const reviews = await ctx.repo.getWorkReviews(w.subId);
+  const buyerPhotos = reviews
+    .filter((r) => r.imageUrls?.length)
+    .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+    .slice(0, 12)
+    .map((r) => ({ reviewId: r.id, url: r.imageUrls![0]!, stars: r.stars, country: r.country, date: r.date, text: r.text.slice(0, 200) }));
   return {
+    photoCheck: w.photoCheck ?? null,
+    buyerPhotos,
     productId: `ae-${w.product!.mainId}`,
     aeMainId: w.product!.mainId,
     result: w.result!,
@@ -639,7 +684,7 @@ export async function pauseSellerProducts(ctx: Pick<PipelineContext, 'repo' | 'l
   for (const id of await ctx.repo.productIdsByStore(storeId)) {
     const p = await ctx.repo.getProduct(id);
     if (p && (p.status === 'live' || p.status === 'pending_review')) {
-      await ctx.repo.updateProduct(id, { status: 'paused', holdReasons: [`Seller blocked: ${reasons.join('; ')}`] });
+      await ctx.repo.updateProduct(id, { status: 'paused', holdReasons: [`Seller blocked: ${reasons.join('; ')}`], review: CLEARED_CHECKS });
       ctx.log(`Paused ${id}: its seller is blocked`);
     }
   }
@@ -653,7 +698,7 @@ export async function monitorProduct(ctx: PipelineContext, p: ProductDoc): Promi
   if (!src) return { changed: false, notes: ['No sourcing record'] };
   const notes: string[] = [];
   const pauseWith = async (reasons: string[]) => {
-    if (p.status === 'live') await ctx.repo.updateProduct(p.id, { status: 'paused', holdReasons: reasons });
+    if (p.status === 'live') await ctx.repo.updateProduct(p.id, { status: 'paused', holdReasons: reasons, review: CLEARED_CHECKS });
     await ctx.repo.updateSourcing(p.id, { lastCheckedAt: now, lastCheck: { ok: false, notes: reasons } });
     return { changed: p.status === 'live', notes: reasons };
   };
@@ -684,6 +729,7 @@ export async function monitorProduct(ctx: PipelineContext, p: ProductDoc): Promi
   const byId = new Map(snap.skus.map((s) => [s.skuId, s]));
   const liveSkus = src.skus.map((s) => byId.get(s.aeSkuId)).filter((s): s is Sku => !!s && s.shipsFrom === 'United States');
   const shipping = await shippingBySku(ctx, src.aeMainId, liveSkus, []);
+  const priceOf = new Map(p.variants.map((v) => [v.id, v.priceCents]));
   const skus = src.skus.map((s) => {
     const live = byId.get(s.aeSkuId);
     if (!live || live.shipsFrom !== 'United States') {
@@ -701,15 +747,20 @@ export async function monitorProduct(ctx: PipelineContext, p: ProductDoc): Promi
       return { ...s, stock: 0 };
     }
     const landed = cost + ship;
-    // Compare with the cost the retail price was set from, so small rises can't add up unnoticed.
-    const base = s.pricedLandedCents ?? s.landedCents;
-    const change = relativeChange(base, landed);
-    if (landed > base && change > ctx.config.pricing.maxCostChangeBeforePause) {
-      notes.push(`Variant ${s.aeSkuId} cost is up ${(change * 100).toFixed(0)}% since it was priced ($${(base / 100).toFixed(2)} → $${(landed / 100).toFixed(2)}); reprice before selling`);
-      pause = true;
+    // Pause when today's cost leaves less than the minimum profit at the current price.
+    const price = priceOf.get(s.aeSkuId);
+    if (price) {
+      const profit = profitCents(price, landed, ctx.config.pricing);
+      if (profit < ctx.config.pricing.minProfitCents) {
+        notes.push(
+          `Variant ${s.aeSkuId} costs $${(landed / 100).toFixed(2)}; profit at $${(price / 100).toFixed(2)} is $${(profit / 100).toFixed(2)}, under the $${(ctx.config.pricing.minProfitCents / 100).toFixed(2)} minimum. Reprice before selling`,
+        );
+        pause = true;
+      }
     }
     return { ...s, costCents: cost, shippingCents: ship, landedCents: landed, stock: live.stock ?? 0 };
   });
+  // Out-of-stock sizes are hidden from shoppers; the product pauses only when none are left.
   const inStock = new Map(skus.map((s) => [s.aeSkuId, s.stock > 0]));
   const variants = p.variants.map((v) => ({ ...v, inStock: inStock.get(v.id) ?? false }));
   if (!variants.some((v) => v.inStock)) {
@@ -717,14 +768,93 @@ export async function monitorProduct(ctx: PipelineContext, p: ProductDoc): Promi
     pause = true;
   }
 
-  await ctx.repo.updateSourcing(p.id, { skus, lastCheckedAt: now, lastCheck: { ok: !pause, notes } });
+  // Flags for a person: the supplier changed the listing, or new reviews report unfixable problems.
+  const flags: string[] = [];
+  if (src.supplier) {
+    if (snap.title.trim() !== src.supplier.title.trim()) flags.push(`Supplier changed the title to "${snap.title.slice(0, 120)}"`);
+    const before = new Set(src.supplier.images);
+    const after = snap.images.map(imageKey);
+    const changedPhotos = after.filter((k) => !before.has(k)).length + src.supplier.images.filter((k) => !after.includes(k)).length;
+    if (changedPhotos) flags.push(`Supplier changed ${changedPhotos} product photo(s)`);
+    const material = snap.attributes.Material ?? null;
+    if ((material ?? '').toLowerCase() !== (src.supplier.material ?? '').toLowerCase()) {
+      flags.push(`Supplier material changed from "${src.supplier.material ?? 'not stated'}" to "${material ?? 'not stated'}"`);
+    }
+  }
+  const watch = await watchReviews(ctx, src.aeMainId, snap.title, src.reviewWatch?.seenIds ?? null);
+  flags.push(...watch.flags);
+  // A product that isn't live can't be paused; what would have paused it becomes a flag instead.
+  if (pause && p.status !== 'live') flags.push(...notes);
+
+  await ctx.repo.updateSourcing(p.id, {
+    skus,
+    lastCheckedAt: now,
+    lastCheck: { ok: !pause && !flags.length, notes: [...new Set([...notes, ...flags])] },
+    // Today's listing becomes the baseline, so each supplier change is flagged once.
+    supplier: { title: snap.title, images: snap.images.map(imageKey), material: snap.attributes.Material ?? null },
+    ...(watch.seenIds ? { reviewWatch: { seenIds: watch.seenIds, lastCheckedAt: now } } : {}),
+  });
   const patch: Partial<ProductDoc> = { variants };
   if (pause && p.status === 'live') {
     patch.status = 'paused';
     patch.holdReasons = notes;
+    patch.review = CLEARED_CHECKS; // publishing again means checking again
   }
+  if (flags.length) patch.flags = addFlags(p.flags, flags.map((text) => ({ at: now, source: 'monitor' as const, text })));
   await ctx.repo.updateProduct(p.id, patch);
-  return { changed: (pause && p.status === 'live') || variants.some((v, i) => v.inStock !== p.variants[i]?.inStock), notes };
+  return {
+    changed: (pause && p.status === 'live') || flags.length > 0 || variants.some((v, i) => v.inStock !== p.variants[i]?.inStock),
+    notes: [...notes, ...flags],
+  };
+}
+
+export const CLEARED_CHECKS = { reverseImage: false, noBrandResemblance: false, listingRead: false, by: null, at: null };
+
+/** Keeps the 50 latest flags and doesn't repeat one that's already there. */
+export function addFlags(existing: ProductFlag[] | undefined, add: ProductFlag[]): ProductFlag[] {
+  const have = new Set((existing ?? []).map((f) => f.text));
+  return [...(existing ?? []), ...add.filter((f) => !have.has(f.text))].slice(-50);
+}
+
+const WATCH_PAGES = 3;
+
+/** Reads the newest review pages and flags unfixable (C) problems in reviews not seen before. */
+async function watchReviews(
+  ctx: PipelineContext,
+  mainId: string,
+  title: string,
+  seen: string[] | null,
+): Promise<{ flags: string[]; seenIds: string[] | null }> {
+  const getPage = ctx.fetchReviewPage ?? fetchReviewPage;
+  const fresh: Review[] = [];
+  const all: string[] = [];
+  try {
+    for (let page = 1; page <= WATCH_PAGES; page++) {
+      const res = await getPage(mainId, page, { fetchImpl: ctx.fetchImpl, sleep: ctx.sleep });
+      for (const r of res.reviews) {
+        all.push(r.id);
+        if (seen && !seen.includes(r.id)) fresh.push(r);
+      }
+      if (page >= res.totalPages) break;
+      await (ctx.sleep ?? ((ms) => new Promise((res2) => setTimeout(res2, ms))))(1200);
+    }
+  } catch (e) {
+    return { flags: [], seenIds: null }; // the review endpoint is unofficial; try again next time
+  }
+  const withText = textReviews(fresh);
+  const seenIds = [...new Set([...(seen ?? []), ...all])].slice(-1000);
+  if (!seen || !withText.length) return { flags: [], seenIds };
+  try {
+    const a = await analyzeReviewChunk(ctx.model(), ctx.models, withText.slice(0, ANALYSIS_CHUNK), { title, material: null, now: (ctx.now ?? Date.now)() });
+    const flags = a.issues
+      .filter((i) => ISSUE_RULES[i.category]?.bucket === 'C')
+      .map((i) => `New review: ${ISSUE_RULES[i.category].label} ("${i.quote.slice(0, 120)}")`);
+    return { flags, seenIds };
+  } catch {
+    // Leave the unread reviews unseen so the next run reads them; the rest of the check still counts.
+    const unread = new Set(withText.map((r) => r.id));
+    return { flags: ['New written reviews could not be read by Claude; they will be read on the next run'], seenIds: seenIds.filter((id) => !unread.has(id)) };
+  }
 }
 
 /** Recomputes retail prices from today's costs (Products → Reprice), resetting the drift baseline. */

@@ -11,7 +11,8 @@ export function proxy(req: NextRequest) {
 }
 
 export const config = {
-  // Everything except the sign-in page, the AliExpress return (it checks the session itself),
+  // Everything except the sign-in page, the AliExpress return (it checks the session itself), the
+  // daily Monitor (it can only start one bounded run a day),
   // Next.js assets and the icon.
-  matcher: ['/((?!login|api/auth/ae/callback|_next/static|_next/image|icon.svg|favicon.ico).*)'],
+  matcher: ['/((?!login|api/auth/ae/callback|api/cron|_next/static|_next/image|icon.svg|favicon.ico).*)'],
 };

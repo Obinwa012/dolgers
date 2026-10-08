@@ -2,16 +2,6 @@ import { z } from 'zod';
 import { cmToIn } from '../util.ts';
 import { type AiModels, type ImageInput, loadImage, type StructuredModel } from './claude.ts';
 
-/**
- * US sizing references the size guide is checked against. These are approximate consensus
- * ranges across major US retailers (body measurements, inches); they guide the model, they are
- * not shown to customers as fact.
- */
-/** DOLGERS sells men's clothing only. */
-export const US_REFERENCE = {
-  menTops: { measure: 'chest', S: [35, 37], M: [38, 40], L: [41, 43], XL: [44, 46], XXL: [47, 49], '3XL': [50, 52] },
-  menBottoms: { measure: 'waist', S: [28, 30], M: [31, 33], L: [34, 36], XL: [37, 39], XXL: [40, 42], '3XL': [43, 45] },
-} as const;
 
 const ExtractSchema = z.strictObject({
   found: z.boolean(),
@@ -71,81 +61,94 @@ export async function extractSellerSizeChart(
   };
 }
 
-const UsChartSchema = z.strictObject({
+const GuideSchema = z.strictObject({
   fitType: z.string(),
-  rows: z.array(
-    z.strictObject({
-      size: z.string(),
-      fitsBody: z.array(z.strictObject({ measure: z.string(), min: z.number(), max: z.number() })),
-      usSizeLabel: z.string(),
-      confidence: z.enum(['high', 'medium', 'low']),
-    }),
-  ),
+  sizeNotes: z.array(z.strictObject({ size: z.string(), note: z.string() })),
   fitNotes: z.array(z.string()),
   reasoning: z.string(),
 });
 
-export interface UsSizeChart {
+/**
+ * The size guide shoppers see: the supplier's own measurements (converted to inches), labelled as
+ * such, with fit advice from US buyers. No generic US sizing is blended in as if it were measured.
+ */
+export interface SizeGuide {
+  label: 'Supplier measurements';
+  unit: 'in';
+  /** Whether each figure measures the garment laid flat or the body it fits. */
+  measurementType: 'garment' | 'body' | 'unknown';
+  columns: string[];
+  rows: { size: string; measurements: Record<string, number>; note: string | null }[];
   fitType: string;
-  rows: {
-    size: string;
-    fitsBody: { measure: string; min: number; max: number }[];
-    garment: Record<string, number>;
-    usSizeLabel: string;
-    confidence: 'high' | 'medium' | 'low';
-  }[];
   fitNotes: string[];
-  basis: { sellerChart: boolean; usReviews: number; reference: string };
+  basis: { usReviews: number };
   reasoning: string;
 }
+/** Older name, kept so earlier code and records still type-check. */
+export type UsSizeChart = SizeGuide;
 
-const US_SYSTEM = `You build a US size guide for one clothing product from three sources: the seller's chart (inches), US buyers' fit reviews, and US standard sizing. Rules:
-- Body ranges must be consistent with the garment measurements: a garment must be larger than the body it fits by sensible ease (≈2-4" at hips/chest for regular fit; elastic waists stretch, so their unstretched waist is the low end of the body range).
-- Only shift a size's guidance away from the seller chart and US standard when two or more US reviews agree on the direction. Otherwise keep it and mark confidence low or medium.
-- fitNotes are short, honest lines for shoppers ("Runs slightly large: size down if between sizes", "Inseam about 29–30\\": shorter than standard US pants"). No marketing language.
-- Use only the sizes the seller sells. confidence: high only with a seller chart AND consistent US review evidence for that size.`;
+const GUIDE_SYSTEM = `You add fit advice to a clothing product's size chart. The measurements are the supplier's own and are not to be changed or invented. You get:
+- the supplier's chart in inches, and whether it measures the garment or the body;
+- US buyers' fit comments (size bought, runs large/small/true, which measurement, their height and weight when stated).
+Rules:
+- fitType: a few words on the cut ("Relaxed fit, elastic waist").
+- sizeNotes: only for a size where two or more US buyers agree on the same direction ("Runs small: order one size up"). Otherwise leave that size out.
+- fitNotes: short, honest lines for shoppers ("Runs slightly large: size down if between sizes", "Inseam about 29–30\": shorter than most US pants"), each supported by two or more US buyers or by the chart itself. No marketing language, no generic sizing advice.
+- reasoning: one or two sentences on the evidence used.`;
 
-export async function buildUsSizeChart(
+export async function buildSizeGuide(
   model: StructuredModel,
   models: AiModels,
   input: {
     title: string;
-    department: 'men';
-    kind: 'tops' | 'bottoms';
     sizesSold: string[];
     seller: SellerSizeChart;
     usFit: { size: string | null; direction: string; dimension: string; heightIn: number | null; weightLb: number | null; quote: string }[];
   },
-): Promise<UsSizeChart> {
-  const refKey = `${input.department}${input.kind === 'tops' ? 'Tops' : 'Bottoms'}` as keyof typeof US_REFERENCE;
+): Promise<SizeGuide | null> {
+  if (!input.seller.found || !input.seller.rows.length) return null;
+  const sold = new Set(input.sizesSold.map(normSize));
+  const rows = input.seller.rows.filter((r) => !sold.size || sold.has(normSize(r.size)));
+  if (!rows.length) return null;
+  const columns = [...new Set(rows.flatMap((r) => Object.keys(r.measurements)))];
   const out = await model.generate({
     model: models.careful,
-    system: US_SYSTEM,
+    system: GUIDE_SYSTEM,
     parts: [
       {
         type: 'text',
         text: JSON.stringify({
           product: input.title,
-          sizesSold: input.sizesSold,
-          sellerChartInches: input.seller.found ? input.seller : 'none found',
-          usBuyerFitEvidence: input.usFit,
-          usStandardBodyMeasurements: US_REFERENCE[refKey],
+          supplierChartInches: { measures: input.seller.measurementType, rows },
+          usBuyerFitComments: input.usFit,
         }),
       },
     ],
-    schema: UsChartSchema,
-    maxTokens: 6000,
+    schema: GuideSchema,
+    maxTokens: 3000,
   });
-  const garmentBySize = new Map(input.seller.rows.map((r) => [normSize(r.size), r.measurements]));
+  const notes = new Map(out.sizeNotes.map((n) => [normSize(n.size), n.note]));
   return {
+    label: 'Supplier measurements',
+    unit: 'in',
+    measurementType: input.seller.measurementType,
+    columns,
+    rows: rows.map((r) => ({ size: r.size, measurements: r.measurements, note: notes.get(normSize(r.size)) ?? null })),
     fitType: out.fitType,
-    rows: out.rows.map((r) => ({ ...r, garment: garmentBySize.get(normSize(r.size)) ?? {} })),
     fitNotes: out.fitNotes,
-    basis: { sellerChart: input.seller.found, usReviews: input.usFit.length, reference: refKey },
+    basis: { usReviews: input.usFit.length },
     reasoning: out.reasoning,
   };
 }
 
-function normSize(s: string): string {
-  return s.toUpperCase().replace(/^MEN\s+|^WOMEN\s+/, '').replace('XXXL', '3XL').replace(/\s+.*/, '').trim();
+/** "Men L", "XXL", "2XL" → comparable size labels. */
+export function normSize(s: string): string {
+  return s
+    .toUpperCase()
+    .replace(/^MEN'?S?\s+/, '')
+    .replace(/\s+.*/, '')
+    .replace(/^XXXXL$/, '4XL')
+    .replace(/^XXXL$/, '3XL')
+    .replace(/^XXL$/, '2XL')
+    .trim();
 }

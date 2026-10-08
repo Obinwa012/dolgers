@@ -38,5 +38,8 @@ Keys saved before in the old dashboard (`config/secrets`) are picked up as they 
 - **Costs:** a product that reaches the AI steps costs roughly 5–7 Claude calls (photo check, review
   analysis in chunks of 120 reviews, seller size chart, US size guide, listing). Most items stop at the
   free checks first. Pick cheaper or stronger models in Settings → Claude.
-- **Not automatic yet:** imports, vetting and monitoring run when you press the buttons. Scheduling
-  them, and placing AliExpress orders automatically, are later phases.
+- **Daily Monitor:** the GitHub Action *Daily monitor* (`.github/workflows/monitor.yml`) calls the
+  dashboard every 3 hours; the dashboard runs the Monitor when the last run is 20+ hours old. It
+  needs no setup. To run it right away, use the Monitor button, or *Run workflow* on the Action.
+- **Not automatic yet:** imports and vetting run when you press the buttons, and placing AliExpress
+  orders automatically is a later phase.
