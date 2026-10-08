@@ -22,7 +22,7 @@ export default async function SellersPage({ searchParams }: { searchParams: Prom
     <>
       <PageHeader
         title="Sellers"
-        sub="Every AliExpress store whose products were vetted. A seller is blocked automatically after confirmed seller-level problems (fakes, wrong items, China shipping on “US” listings); blocking pauses their live products."
+        sub="Every AliExpress store seen while vetting. Once a store is known to be below the rating bar, its other items are screened out without asking AliExpress again (for 14 days). A seller is blocked automatically after confirmed seller-level problems (fakes, wrong items, China shipping on “US” listings); blocking pauses their live products."
       />
       <Tabs
         current={sp.store ? 'one' : sp.blocked ? 'blocked' : 'all'}

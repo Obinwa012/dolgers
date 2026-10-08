@@ -116,6 +116,8 @@ export interface SellerDoc {
   blockReasons: string[];
   /** carrier|fee|days|labels: stores sharing a blocked seller's fingerprint get a review flag. */
   fingerprint: string | null;
+  /** When the store ratings were last read from AliExpress. */
+  ratingsCheckedAt?: number;
   updatedAt: number;
 }
 

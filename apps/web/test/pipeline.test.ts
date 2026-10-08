@@ -262,5 +262,26 @@ describe('monitorProduct', () => {
     await monitorProduct(withProduct(product), p);
     expect(repo.products.get(p.id)!.status).toBe('paused');
   });
-});
 
+  it('screens a weak store’s other items from memory, without calling AliExpress', async () => {
+    const repo = new MemoryRepo();
+    const product = fx('product_cargo.json');
+    product.aliexpress_ds_product_get_response.result.ae_store_info.item_as_described_rating = '3.5';
+    let productCalls = 0;
+    const fetchImpl = aeFetch('product_cargo.json', 'freight_paid.json', (b) => {
+      if (b.get('method') === 'aliexpress.ds.product.get') {
+        productCalls++;
+        return product;
+      }
+      return undefined;
+    });
+    const c = ctx(repo, fetchImpl, new FakeModel({}), reviewSet([]));
+    const shop = product.aliexpress_ds_product_get_response.result.ae_store_info.store_id.toString();
+    const first = await processCandidate(c, { ...cand('A1'), shopId: shop });
+    expect(first.outcome).toBe('screened_out');
+    const second = await processCandidate(c, { ...cand('A2'), shopId: shop });
+    expect(second.outcome).toBe('screened_out');
+    expect(second.reasons[0]).toMatch(/As described 3.5.*store checked/);
+    expect(productCalls).toBe(1);
+  });
+});
