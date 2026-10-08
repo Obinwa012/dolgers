@@ -11,7 +11,8 @@
     "test": "npm run test --workspaces --if-present",
     "test:rules": "firebase emulators:exec --only firestore --project demo-dolgers \"node --test firebase/tests/*.test.mjs\"",
     "emulators": "firebase emulators:start --only firestore --project demo-dolgers",
-    "pipeline": "npm run start -w @dolgers/pipeline --"
+    "pipeline": "npm run start -w @dolgers/pipeline --",
+    "web": "npm --prefix apps/web run dev"
   },
   "engines": {
     "node": ">=22"

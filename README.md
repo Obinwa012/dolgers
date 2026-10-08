@@ -4,12 +4,13 @@ A US clothing store stocked only with products that ship from US warehouses and 
 evidence-based vetting pipeline. Quality over quantity: a product goes live only when the data says
 US customers will get what the page promises.
 
-This repository currently holds **phase 1: the sourcing pipeline and the database**. The storefront
-(Next.js + Tailwind + Firebase Auth) and automatic AliExpress order placement are the next phases;
-the data model already carries what they need.
+This repository holds the sourcing pipeline and database (phase 1) and the first version of the
+storefront (phase 2, browsing only). Accounts, checkout and automatic AliExpress order placement come
+next; the data model already carries what they need.
 
 | Part | What it is |
 | --- | --- |
+| `apps/web` | The storefront: Next.js 16 + Tailwind 4 on Firebase App Hosting. Home, Men, Women and product pages read live products from Firestore. A standalone app with its own lockfile (App Hosting builds this folder). |
 | `packages/core` | The pipeline: AliExpress client, review fetcher, vetting engine, Claude analyzers, listing writer, Firestore layer. |
 | `apps/pipeline` | The command-line runner (also the Cloud Run job image). |
 | `firebase` | Firestore security rules, indexes and rules tests. |
@@ -39,6 +40,17 @@ npm run pipeline -- report --emulator
 
 `--dry-run` instead of `--emulator` keeps everything in memory and writes the results to
 `apps/pipeline/out/`. Dry runs read AliExpress tokens from `AE_ACCESS_TOKEN`.
+
+## The storefront
+
+```bash
+cd apps/web && npm install
+DOLGERS_DEMO=1 npm run dev      # preview with one sample product, no Firebase needed
+npm run dev                     # reads Firestore when GOOGLE_CLOUD_PROJECT (or FIREBASE_CONFIG) is set
+```
+
+Products appear on the site only when the pipeline marks them `live`. Pages are cached and
+refreshed every 5 minutes.
 
 ## Commands
 
