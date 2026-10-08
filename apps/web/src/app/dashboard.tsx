@@ -44,6 +44,14 @@ export default function Dashboard() {
   const [debug, setDebug] = useState<{ topKeys: string[]; dataKeys: string[]; firstProductKeys: string[]; parseVia: string; rawCount: number; parsedCount: number } | null>(null);
   const [freightDebug, setFreightDebug] = useState<{ rawKeys: string[]; rawSample: string } | null>(null);
   const [noteBreakdown, setNoteBreakdown] = useState<{ note: string; count: number }[]>([]);
+  const [feeds, setFeeds] = useState<string[]>([]);
+  const [feedRaw, setFeedRaw] = useState<{ rawKeys: string[]; rawSample: string } | null>(null);
+  const [feedLoading, setFeedLoading] = useState(false);
+  const [feedError, setFeedError] = useState('');
+  const [activeFeed, setActiveFeed] = useState('');
+  const [feedCategory, setFeedCategory] = useState('');
+  const [feedProducts, setFeedProducts] = useState<StagedProduct[]>([]);
+  const [feedDebug, setFeedDebug] = useState<{ topKeys: string[]; firstProductKeys: string[]; parseVia: string; rawCount: number; parsedCount: number } | null>(null);
 
   const kw = (id: string, fallback: string) => keywords[id] ?? fallback;
 
@@ -99,6 +107,52 @@ export default function Dashboard() {
   async function logout() {
     await fetch('/api/auth/logout', { method: 'POST' });
     window.location.href = '/login';
+  }
+
+  async function listFeeds() {
+    setFeedLoading(true);
+    setFeedError('');
+    setFeedRaw(null);
+    try {
+      const r = await fetch('/api/ae/feeds');
+      const d = await r.json();
+      if (!r.ok) {
+        setFeedError(d.error ?? 'Feed list failed.');
+        return;
+      }
+      setFeeds(d.feeds ?? []);
+      setFeedRaw({ rawKeys: d.rawKeys ?? [], rawSample: d.rawSample ?? '' });
+      if (d.feeds?.length > 0 && !activeFeed) setActiveFeed(d.feeds[0]);
+    } catch {
+      setFeedError('Network error — try again.');
+    } finally {
+      setFeedLoading(false);
+    }
+  }
+
+  async function previewFeed() {
+    if (!activeFeed) return;
+    setFeedLoading(true);
+    setFeedError('');
+    setFeedDebug(null);
+    try {
+      const r = await fetch('/api/ae/feeds', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedName: activeFeed, categoryId: feedCategory || undefined, page: 1 }),
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        setFeedError(d.error ?? 'Feed preview failed.');
+        return;
+      }
+      setFeedProducts(d.products ?? []);
+      setFeedDebug(d.debug ?? null);
+    } catch {
+      setFeedError('Network error — try again.');
+    } finally {
+      setFeedLoading(false);
+    }
   }
 
   return (
@@ -243,6 +297,82 @@ export default function Dashboard() {
               </div>
             </article>
           ))}
+        </div>
+
+        <div className="mt-12 border-t border-line pt-8">
+          <h2 className="font-display text-xl mb-2">Dropship feeds</h2>
+          <p className="text-sm text-muted mb-4">
+            AliExpress-curated bestseller feeds — a second sourcing channel next to keyword search.
+            List the feeds your app can see, then preview one.
+          </p>
+          <div className="flex flex-wrap items-center gap-3 mb-4">
+            <button
+              onClick={listFeeds}
+              disabled={feedLoading}
+              className="bg-ink text-paper rounded px-4 py-1.5 text-sm disabled:opacity-40"
+            >
+              {feedLoading ? 'Loading…' : 'List feeds'}
+            </button>
+            {feeds.length > 0 && (
+              <>
+                <select
+                  value={activeFeed}
+                  onChange={(e) => setActiveFeed(e.target.value)}
+                  className="border border-line rounded px-2 py-1.5 text-sm bg-paper max-w-xs"
+                >
+                  {feeds.map((f) => (
+                    <option key={f} value={f}>{f}</option>
+                  ))}
+                </select>
+                <input
+                  placeholder="Category ID (optional)"
+                  value={feedCategory}
+                  onChange={(e) => setFeedCategory(e.target.value)}
+                  className="border border-line rounded px-2 py-1.5 text-sm w-44 bg-paper"
+                />
+                <button
+                  onClick={previewFeed}
+                  disabled={feedLoading || !activeFeed}
+                  className="border border-ink rounded px-4 py-1.5 text-sm disabled:opacity-40"
+                >
+                  Preview feed
+                </button>
+              </>
+            )}
+          </div>
+          {feedError && <p className="text-sm text-danger mb-4">{feedError}</p>}
+          {feedRaw && feeds.length === 0 && (
+            <details className="text-xs text-muted mb-4 bg-paper border border-line rounded p-3">
+              <summary className="cursor-pointer">No feeds parsed — raw response</summary>
+              <pre className="mt-2 whitespace-pre-wrap">keys: {feedRaw.rawKeys.join(', ') || '(none)'}{'\n'}{feedRaw.rawSample}</pre>
+            </details>
+          )}
+          {feedDebug && (
+            <p className="text-xs text-muted mb-4">
+              Feed preview: {feedDebug.parsedCount} products parsed (raw entries {feedDebug.rawCount}, via {feedDebug.parseVia})
+            </p>
+          )}
+          {feedProducts.length > 0 && (
+            <div className="grid gap-4 md:grid-cols-2">
+              {feedProducts.map((p) => (
+                <article key={p.aeProductId} className="bg-paper border border-line rounded-lg p-4 flex gap-4">
+                  {p.image && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.image} alt="" className="w-24 h-24 object-cover rounded bg-stone shrink-0" />
+                  )}
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-medium leading-snug mb-1 line-clamp-2">{p.title}</h3>
+                    <p className="text-xs text-muted">
+                      {p.currency} {p.priceMin !== null ? p.priceMin.toFixed(2) : '—'}
+                      {p.rating !== null && <> · ★ {p.rating.toFixed(1)}</>}
+                      {p.orders !== null && <> · {p.orders} orders</>}
+                    </p>
+                    <p className="text-xs text-muted font-mono mt-1">{p.aeProductId}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </main>
