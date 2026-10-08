@@ -1,0 +1,191 @@
+{
+ "aliexpress_ds_recommend_feed_get_response": {
+  "result": {
+   "current_record_count": 19,
+   "total_record_count": 2007,
+   "is_finished": false,
+   "products": {
+    "traffic_product_d_t_o": [
+     {
+      "original_price": "10.99",
+      "product_small_image_urls": {
+       "productSmallImageUrl": [
+        "https://ae-pic-a1.aliexpress-media.com/kf/Sdce5590f72204593b70b1cd254110265U.jpg",
+        "https://ae-pic-a1.aliexpress-media.com/kf/S67686f0844b34a458b2f532cffed6e280.jpg",
+        "https://ae-pic-a1.aliexpress-media.com/kf/S6ea8ac7d07ba4cc4bd0bef12fe9705fc1.jpg",
+        "https://ae-pic-a1.aliexpress-media.com/kf/H2aff8ef715934a94bdd95c3088f6274dm.jpg",
+        "https://ae-pic-a1.aliexpress-media.com/kf/S88feb467beb140d1baf98f3a6485e9ecQ.jpg",
+        "https://ae-pic-a1.aliexpress-media.com/kf/Sa5cbb8b902ca42168da84dfb62752147k.jpg"
+       ]
+      },
+      "second_level_category_name": "Tops & Tees",
+      "product_detail_url": "https://www.aliexpress.com/item/3256808711364240.html?pdp_npi=6%40dis%21USD%2110.99%213.49%21%21%2110.99%213.49%21%4021013cc617914131695997556e106d%2112000047266079401%21affd%21%21%21%211%210%21",
+      "target_sale_price": "3.49",
+      "second_level_category_id": 200000779,
+      "discount": "68%",
+      "product_main_image_url": "https://ae-pic-a1.aliexpress-media.com/kf/Sdce5590f72204593b70b1cd254110265U.jpg",
+      "first_level_category_id": 200000343,
+      "target_sale_price_currency": "USD",
+      "original_price_currency": "USD",
+      "shop_url": "https://www.aliexpress.com/store/1101238301",
+      "target_original_price_currency": "USD",
+      "product_id": 3256808711364240,
+      "seller_id": 229819989,
+      "target_original_price": "10.99",
+      "product_video_url": "",
+      "first_level_category_name": "Men's Clothing",
+      "evaluate_rate": "94.2%",
+      "sale_price": "3.49",
+      "product_title": "Custom T Shirt for Men Front Back Print Make Your Design Logo Text Gift Tshirt 100% Cotton Made in US",
+      "shop_id": 1101238301,
+      "sale_price_currency": "USD",
+      "lastest_volume": 209
+     },
+     {
+      "original_price": "447.79",
+      "product_small_image_urls": {
+       "productSmallImageUrl": [
+        "https://ae-pic-a1.aliexpress-media.com/kf/S7aa2deabae7d41a195ff2e1fcebe74d9t.jpg",
+        "https://ae-pic-a1.aliexpress-media.com/kf/S78f736ef93ab4f73880550738d8eeaedY.jpg",
+        "https://ae-pic-a1.aliexpress-media.com/kf/Sb5f2d537584e487997c62573eea3e7f2b.jpg",
+        "https://ae-pic-a1.aliexpress-media.com/kf/S3d1dffba78a342429068387cacc04912A.jpg",
+        "https://ae-pic-a1.aliexpress-media.com/kf/S997c81430df445c495f75e7167b0205fm.jpg",
+        "https://ae-pic-a1.aliexpress-media.com/kf/S4b6364881223412eba3e6958bed07faep.jpg"
+       ]
+      },
+      "second_level_category_name": "Denim（New）",
+      "product_detail_url": "https://www.aliexpress.com/item/3256812009027202.html?pdp_npi=6%40dis%21USD%2167.17%2120.71%21%21%21447.79%21138.07%21%4021013cc617914131695997556e106d%2112000057751792966%21affd%21%21%21%211%210%21",
+      "target_sale_price": "20.71",
+      "second_level_category_id": 202220211,
+      "discount": "69%",
+      "product_main_image_url": "https://ae-pic-a1.aliexpress-media.com/kf/S7aa2deabae7d41a195ff2e1fcebe74d9t.jpg",
+      "first_level_category_id": 200000343,
+      "target_sale_price_currency": "USD",
+      "original_price_currency": "CNY",
+      "shop_url": "https://www.aliexpress.com/store/1105466783",
+      "target_original_price_currency": "USD",
+      "product_id": 3256812009027202,
+      "seller_id": 6004864851,
+      "target_original_price": "67.17",
+      "product_video_url": "",
+      "first_level_category_name": "Men's Clothing",
+      "evaluate_rate": "100.0%",
+      "sale_price": "138.07",
+      "product_title": "HME Men's Flared Denim Pants, Light Blue Vintage Jeans with Rips & Zipper Hem for Casual Style",
+      "shop_id": 1105466783,
+      "sale_price_currency": "CNY",
+      "lastest_volume": 13
+     },
+     {
+      "original_price": "135.51",
+      "product_small_image_urls": {
+       "productSmallImageUrl": [
+        "https://ae-pic-a1.aliexpress-media.com/kf/Sd11056dcc6c34689a07ade272a6fd34d3.png",
+        "https://ae-pic-a1.aliexpress-media.com/kf/Sba3c26657825419b84f861d590b6f870X.jpg",
+        "https://ae-pic-a1.aliexpress-media.com/kf/Sdb7bcaf422b149e6942bd8c959e17762o.jpg",
+        "https://ae-pic-a1.aliexpress-media.com/kf/Sb8b07ebafecb4c7290720911947a3a93J.jpg",
+        "https://ae-pic-a1.aliexpress-media.com/kf/S515797c57e774caab2ec237b14524413T.jpg",
+        "https://ae-pic-a1.aliexpress-media.com/kf/S5d26f7d851e74cc28c0beb964fd8d32dF.jpg",
+        "https://ae-pic-a1.aliexpress-media.com/kf/S0ead4142bbe047559e7c4dbe30922849m.png"
+       ]
+      },
+      "second_level_category_name": "Tops & Tees",
+      "product_detail_url": "https://www.aliexpress.com/item/3256812446338354.html?pdp_npi=6%40dis%21USD%2120.33%211.09%21%21%21135.51%217.25%21%4021013cc617914131695997556e106d%2112000058885011125%21affd%21%21%21%211%210%21",
+      "target_sale_price": "1.09",
+      "second_level_category_id": 200000779,
+      "discount": "94%",
+      "product_main_image_url": "https://ae-pic-a1.aliexpress-media.com/kf/Sd11056dcc6c34689a07ade272a6fd34d3.png",
+      "first_level_category_id": 200000343,
+      "target_sale_price_currency": "USD",
+      "original_price_currency": "CNY",
+      "shop_url": "https://www.aliexpress.com/store/1105203668",
+      "target_original_price_currency": "USD",
+      "product_id": 3256812446338354,
+      "seller_id": 6004005918,
+      "target_original_price": "20.33",
+      "product_video_url": "",
+      "first_level_category_name": "Men's Clothing",
+      "evaluate_rate": "100.0%",
+      "sale_price": "7.25",
+      "product_title": "1pcs T Shirt for Men Summer 100% Cotton Short Sleeve Breathable Casual Hip-Hop Y2k tops Running Top Solid Color Man Clothes",
+      "shop_id": 1105203668,
+      "sale_price_currency": "CNY",
+      "lastest_volume": 18
+     },
+     {
+      "original_price": "382.13",
+      "product_small_image_urls": {
+       "productSmallImageUrl": [
+        "https://ae-pic-a1.aliexpress-media.com/kf/S784e94521b1949bc975040f4f0d6d80bi.jpg",
+        "https://ae-pic-a1.aliexpress-media.com/kf/S3a1b764f2de94066b9cf78089fb0701cW.jpg",
+        "https://ae-pic-a1.aliexpress-media.com/kf/S276767728bb2447196801abaa4ea8404H.jpg",
+        "https://ae-pic-a1.aliexpress-media.com/kf/S541be280ca3a4fae860369691cc3bc27k.jpg",
+        "https://ae-pic-a1.aliexpress-media.com/kf/Sd99101311d0c47f5848ceef91b011394T.jpg",
+        "https://ae-pic-a1.aliexpress-media.com/kf/S95cf7c74641b43838c969801fb4777100.jpg"
+       ]
+      },
+      "second_level_category_name": "Pants",
+      "product_detail_url": "https://www.aliexpress.com/item/3256811859422872.html?pdp_npi=6%40dis%21USD%2157.32%2112.98%21%21%21382.13%2186.52%21%4021013cc617914131695997556e106d%2112000057474585431%21affd%21%21%21%211%210%21",
+      "target_sale_price": "12.98",
+      "second_level_category_id": 201240601,
+      "discount": "77%",
+      "product_main_image_url": "https://ae-pic-a1.aliexpress-media.com/kf/S784e94521b1949bc975040f4f0d6d80bi.jpg",
+      "first_level_category_id": 200000343,
+      "target_sale_price_currency": "USD",
+      "original_price_currency": "CNY",
+      "shop_url": "https://www.aliexpress.com/store/1105205769",
+      "target_original_price_currency": "USD",
+      "product_id": 3256811859422872,
+      "seller_id": 6003772870,
+      "target_original_price": "57.32",
+      "product_video_url": "",
+      "first_level_category_name": "Men's Clothing",
+      "evaluate_rate": "95.9%",
+      "sale_price": "86.52",
+      "product_title": "3-Pack Men's New Multi-Pocket Cargo Pants, Zipper Design Straight Leg Trousers, Stylish Fit and Comfortable Fabric",
+      "shop_id": 1105205769,
+      "sale_price_currency": "CNY",
+      "lastest_volume": 199
+     },
+     {
+      "original_price": "10.49",
+      "product_small_image_urls": {
+       "productSmallImageUrl": [
+        "https://ae-pic-a1.aliexpress-media.com/kf/S8c5dcb52f0b143ce9ca6edd9eb81769fs.png",
+        "https://ae-pic-a1.aliexpress-media.com/kf/S6ea8ac7d07ba4cc4bd0bef12fe9705fc1.jpg",
+        "https://ae-pic-a1.aliexpress-media.com/kf/H2aff8ef715934a94bdd95c3088f6274dm.jpg",
+        "https://ae-pic-a1.aliexpress-media.com/kf/S09ea6c3c8bf441f7a53db844e0885006q.jpg",
+        "https://ae-pic-a1.aliexpress-media.com/kf/S6d02746259bf4590a4759f5de22971bbk.jpg"
+       ]
+      },
+      "second_level_category_name": "Tops & Tees",
+      "product_detail_url": "https://www.aliexpress.com/item/3256808795669215.html?pdp_npi=6%40dis%21USD%2110.49%2110.49%21%21%2110.49%2110.49%21%4021013cc617914131695997556e106d%2112000047452866828%21affd%21%21%21%211%210%21",
+      "target_sale_price": "10.49",
+      "second_level_category_id": 200000779,
+      "discount": "0%",
+      "product_main_image_url": "https://ae-pic-a1.aliexpress-media.com/kf/S8c5dcb52f0b143ce9ca6edd9eb81769fs.png",
+      "first_level_category_id": 200000343,
+      "target_sale_price_currency": "USD",
+      "original_price_currency": "USD",
+      "shop_url": "https://www.aliexpress.com/store/1101238301",
+      "target_original_price_currency": "USD",
+      "product_id": 3256808795669215,
+      "seller_id": 229819989,
+      "target_original_price": "10.49",
+      "product_video_url": "",
+      "first_level_category_name": "Men's Clothing",
+      "evaluate_rate": "86.1%",
+      "sale_price": "10.49",
+      "product_title": "Custom T-shirt Male One-Side Print Personalized Make Your Photo Text Gift 100% Cotton Soft Casual T Shirt Made in US",
+      "shop_id": 1101238301,
+      "sale_price_currency": "USD",
+      "lastest_volume": 47
+     }
+    ]
+   }
+  },
+  "rsp_code": 200,
+  "request_id": "210155f117914131696016044",
+  "_trace_id_": "21013cc617914131695997556e106d"
+ }
+}
