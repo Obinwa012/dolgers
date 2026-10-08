@@ -1,0 +1,13 @@
+# Firebase App Hosting configuration for the DOLGERS storefront.
+# The backend's root directory must be apps/web (this folder).
+runConfig:
+  minInstances: 0
+  maxInstances: 5
+  concurrency: 80
+  cpu: 1
+  memoryMiB: 512
+
+env:
+  - variable: SITE_URL
+    value: https://dolgers--dolgers.us-central1.hosted.app
+    availability: [BUILD, RUNTIME]

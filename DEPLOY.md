@@ -3,14 +3,21 @@
 ## 1. Firebase
 
 ```bash
-npx firebase use staging                 # or production
+npx firebase use default                 # the "dolgers" project
 npx firebase deploy --only firestore     # rules + indexes
 ```
 
 Admins need the custom claim `admin: true` to read the review queue. Set it once with the Admin
 SDK, for example `getAuth().setCustomUserClaims(uid, { admin: true })`.
 
-## 2. AliExpress tokens (do this once)
+## 2. Storefront (App Hosting)
+
+The App Hosting backend `dolgers` builds the folder `apps/web` from the `main` branch; that is
+already its configured root directory. The site reads products with the backend's service account,
+which only needs read access to Firestore (**Cloud Datastore Viewer**). Nothing on the site writes
+to the database.
+
+## 3. AliExpress tokens (do this once)
 
 Tokens pasted by hand expire after about a day and **can't renew themselves**. Connect the app
 properly so a refresh token is stored:
@@ -22,7 +29,7 @@ npm run pipeline -- auth exchange <code>
 npm run pipeline -- auth status     # must say "refresh token present"
 ```
 
-## 3. Secrets
+## 4. Secrets
 
 Put these in Secret Manager and expose them to the job as environment variables:
 
@@ -34,7 +41,7 @@ Firestore access uses the job's service account (Application Default Credentials
 **Cloud Datastore User** on the project. Rotate the AliExpress app secret if it has ever been
 pasted into a chat or a ticket.
 
-## 4. Cloud Run job and schedule
+## 5. Cloud Run job and schedule
 
 ```bash
 gcloud builds submit --tag us-central1-docker.pkg.dev/PROJECT/dolgers/pipeline -f apps/pipeline/Dockerfile .
@@ -55,7 +62,7 @@ Then add Cloud Scheduler triggers that run the job with different arguments:
 The Docker image hasn't been built in this environment yet; build it once in Cloud Build before
 you schedule anything.
 
-## 5. Costs to expect
+## 6. Costs to expect
 
 - **Claude:** a product that reaches the AI steps costs roughly 5 calls (image check, review analysis, seller size chart, US size chart, listing). Most candidates stop earlier, with no AI cost.
 - **Model choice:** set `AI_MODEL_FAST` / `AI_MODEL_CAREFUL` to trade cost against quality.
