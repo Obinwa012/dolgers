@@ -1,0 +1,31 @@
+{
+ "aliexpress_ds_freight_query_response": {
+  "result": {
+   "msg": "Call succeeds",
+   "code": 200,
+   "success": true,
+   "delivery_options": {
+    "delivery_option_d_t_o": [
+     {
+      "code": "AE_US_SAVER",
+      "shipping_fee_currency": "USD",
+      "free_shipping": false,
+      "mayHavePFS": false,
+      "guaranteed_delivery_days": "30",
+      "max_delivery_days": 10,
+      "tracking": true,
+      "shipping_fee_format": "$2.99",
+      "delivery_date_desc": "Oct 13 - 17",
+      "company": "US AliExpress Delivery-Saver",
+      "ship_from_country": "US",
+      "min_delivery_days": 6,
+      "available_stock": "147",
+      "shipping_fee_cent": "2.99"
+     }
+    ]
+   }
+  },
+  "request_id": "2151e87717914131901043263",
+  "_trace_id_": "212a7b8d17914131901025400e0fa1"
+ }
+}

@@ -1,0 +1,9 @@
+{
+ "aliexpress_ds_freight_query_response": {
+  "result": {
+   "msg": "DELIVERY_SERVICE_EXCEPTION",
+   "code": 506,
+   "success": false
+  }
+ }
+}

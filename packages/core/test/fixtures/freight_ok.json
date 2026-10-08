@@ -1,0 +1,27 @@
+{
+ "aliexpress_ds_freight_query_response": {
+  "result": {
+   "msg": "Call succeeds",
+   "code": 200,
+   "success": true,
+   "delivery_options": {
+    "delivery_option_d_t_o": [
+     {
+      "code": "USPS",
+      "free_shipping": true,
+      "mayHavePFS": false,
+      "guaranteed_delivery_days": "20",
+      "max_delivery_days": 15,
+      "tracking": true,
+      "delivery_date_desc": "Oct 17 - 22",
+      "company": "USPS",
+      "ship_from_country": "US",
+      "min_delivery_days": 10
+     }
+    ]
+   }
+  },
+  "request_id": "21411fe917914144338807098",
+  "_trace_id_": "2151fd3a17914144338798841e0e8f"
+ }
+}

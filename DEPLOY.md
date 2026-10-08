@@ -1,92 +1,62 @@
-# Deploying DOLGERS
+# Deploy
 
-Two Firebase projects are expected: `dolgers-staging` and `dolgers-prod` (see `.firebaserc`). Do
-everything on staging first with Stripe **test** keys.
-
-## 1. Firebase project
-
-1. Create the project on the **Blaze** plan and set a **budget alert** (Billing → Budgets) before
-   anything else.
-2. Firestore: create the database in **`nam5`** (multi-region US).
-3. Authentication: enable Email/Password (and Google if wanted). Upgrade to **Identity Platform** and
-   turn on **MFA**; require it for admin accounts.
-4. App Check: register the web app with **reCAPTCHA Enterprise**; note the site key. Enforce App
-   Check for Firestore and Storage once the site is live and verified.
-5. Storage: create the default bucket.
-6. Firestore **TTL policies**: `rateLimits` on field `expiresAt` (keeps the collection small).
-7. Install the **Trigger Email** extension (`firebase/firestore-send-email`) watching the `mail`
-   collection, with your SMTP or SendGrid credentials.
-
-## 2. Secrets and settings for Functions
+## 1. Firebase
 
 ```bash
-firebase use dolgers-staging
-firebase functions:secrets:set STRIPE_SECRET_KEY        # sk_test_... / sk_live_...
-firebase functions:secrets:set STRIPE_WEBHOOK_SECRET    # whsec_platform,whsec_connect
-firebase functions:secrets:set TYPESENSE_ADMIN_KEY
-firebase functions:secrets:set REVALIDATE_SECRET        # long random string, same as App Hosting
+npx firebase use staging                 # or production
+npx firebase deploy --only firestore     # rules + indexes
 ```
 
-Non-secret settings are in `functions/.env` (`SITE_URL`, `TYPESENSE_HOST`, `ENFORCE_APP_CHECK`,
-`STRIPE_TAX_ENABLED`). Use `functions/.env.dolgers-staging` / `.env.dolgers-prod` to override per
-project.
+Admins need the custom claim `admin: true` to read the review queue. Set it once with the Admin
+SDK, for example `getAuth().setCustomUserClaims(uid, { admin: true })`.
 
-Deploy:
+## 2. AliExpress tokens (do this once)
+
+Tokens pasted by hand expire after about a day and **can't renew themselves**. Connect the app
+properly so a refresh token is stored:
 
 ```bash
-firebase deploy --only firestore,storage,functions
+npm run pipeline -- auth url --redirect <the callback URL registered on your AliExpress app>
+# open the link, approve, copy `code` from the address bar of the page you land on
+npm run pipeline -- auth exchange <code>
+npm run pipeline -- auth status     # must say "refresh token present"
 ```
 
-## 3. Stripe
+## 3. Secrets
 
-1. Enable **Connect** (Express accounts, United States). Set the platform's branding.
-2. Add two webhook endpoints pointing at the `stripeWebhook` function URL:
-   - **Account events:** `payment_intent.succeeded`, `payment_intent.canceled`,
-     `charge.dispute.created`.
-   - **Connected-account events:** `account.updated`.
-   Put both signing secrets in `STRIPE_WEBHOOK_SECRET`, comma-separated.
-3. Optional: Stripe Tax. Register where required, then set `STRIPE_TAX_ENABLED=true`.
+Put these in Secret Manager and expose them to the job as environment variables:
 
-## 4. Typesense
+- `AE_APP_KEY`
+- `AE_APP_SECRET`
+- `ANTHROPIC_API_KEY`
 
-Create a Typesense Cloud cluster in a US region. Put the host in `TYPESENSE_HOST` (Functions and
-App Hosting) and the admin key in `TYPESENSE_ADMIN_KEY`. Create a **search-only** key for the
-`products` collection and store it as the App Hosting secret `TYPESENSE_SEARCH_KEY`. After the first
-deploy, run "Rebuild search index" from the admin console.
+Firestore access uses the job's service account (Application Default Credentials); give it
+**Cloud Datastore User** on the project. Rotate the AliExpress app secret if it has ever been
+pasted into a chat or a ticket.
 
-## 5. Website on App Hosting
-
-1. `firebase apphosting:backends:create --project dolgers-staging`, connect this GitHub repository,
-   root directory **`apps/web`**, live branch `main`, region `us-central1`.
-2. Secrets:
-   ```bash
-   firebase apphosting:secrets:set TYPESENSE_SEARCH_KEY
-   firebase apphosting:secrets:set REVALIDATE_SECRET
-   ```
-   and grant the backend access when prompted.
-3. Fill in the `REPLACE_ME` values in `apps/web/apphosting.yaml` (Stripe publishable key, reCAPTCHA
-   site key, Typesense host, site URL).
-4. **Make the website's identity read-only.** In IAM, find the App Hosting backend's service account
-   (`firebase-app-hosting-compute@PROJECT.iam.gserviceaccount.com`), remove broad roles such as
-   Editor, and grant `Cloud Datastore Viewer` plus what App Hosting itself needs (Secret Manager
-   Secret Accessor for its secrets, Logs Writer). The website then cannot write Firestore even if
-   compromised.
-5. Add your domain under App Hosting → Domains.
-
-## 6. First admin
-
-Sign up on the site with your own email, then from a trusted machine with project credentials:
+## 4. Cloud Run job and schedule
 
 ```bash
-node -e "const a=require('firebase-admin');a.initializeApp({projectId:'dolgers-prod'});a.auth().getUserByEmail('YOU@EXAMPLE.COM').then(u=>a.auth().setCustomUserClaims(u.uid,{admin:true})).then(()=>console.log('done'))"
+gcloud builds submit --tag us-central1-docker.pkg.dev/PROJECT/dolgers/pipeline -f apps/pipeline/Dockerfile .
+gcloud run jobs create pipeline --image us-central1-docker.pkg.dev/PROJECT/dolgers/pipeline \
+  --region us-central1 --task-timeout 3600 --max-retries 0 \
+  --set-env-vars GCLOUD_PROJECT=PROJECT \
+  --set-secrets AE_APP_KEY=AE_APP_KEY:latest,AE_APP_SECRET=AE_APP_SECRET:latest,ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest
 ```
 
-Further admins can be added from the admin console.
+Then add Cloud Scheduler triggers that run the job with different arguments:
 
-## 7. Before taking real money
+| When | Arguments | Why |
+| --- | --- | --- |
+| Daily 05:00 | `import --department men --pages 10` and the same for `women` | New items enter the queue. |
+| Hourly | `run --limit 25` | About 25 products per hour stays well under AliExpress's rate limit (about 1 call/second). |
+| Daily 07:00 | `monitor` | Price, stock, seller and rating checks; pauses what changed. |
 
-- Run a full order on staging with test cards: pay, ship (vendor transfer), refund (transfer
-  reversal), dispute.
-- Confirm the sales-tax plan with an accountant (marketplace facilitator rules).
-- Publish terms, privacy, shipping and returns pages reviewed by a lawyer.
-- Switch keys to live, re-register webhooks in live mode.
+The Docker image hasn't been built in this environment yet; build it once in Cloud Build before
+you schedule anything.
+
+## 5. Costs to expect
+
+- **Claude:** a product that reaches the AI steps costs roughly 5 calls (image check, review analysis, seller size chart, US size chart, listing). Most candidates stop earlier, with no AI cost.
+- **Model choice:** set `AI_MODEL_FAST` / `AI_MODEL_CAREFUL` to trade cost against quality.
+- **Firestore:** a few documents per product, with no hot spots.
