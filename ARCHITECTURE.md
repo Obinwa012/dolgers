@@ -6,6 +6,29 @@ The AI finds and quotes evidence; **code makes every decision.** Thresholds live
 document, every issue category has a fixed bucket in code, and a product only goes live
 automatically when no rule asks for a person to look.
 
+## Men’s clothing only
+
+Imports ask the AliExpress feeds for category 200000343 (men’s clothing) and drop anything else.
+The size references, store categories and listing writer are men’s only.
+
+## How the dashboard runs it
+
+A server request can be cut off by the hosting platform, so the work is split into short steps
+that each save their progress to Firestore:
+
+- **Jobs** (`core/jobs.ts`, `jobs/{id}`): an import, vet or monitor run. The Import & vet page calls
+  `stepJob` in a loop while the tab is open. A lock stops two tabs advancing one job at once.
+- **Work** (`core/stages.ts`, `work/{subId}`): one candidate’s vetting, as stages: fetch → reviews →
+  images → analysis → decide → seller chart → US chart → shipping → listing → save. A request runs
+  stages until it reaches one that calls Claude (at most one Claude call per request) or 25 seconds
+  pass, then saves. Reviews are stored in `work/{subId}/parts`.
+- **Retries:** a stage is retried up to 3 times, counting requests that were cut off before they
+  reported back; then the item is marked *error* and rechecked the next day. A credential problem
+  (expired AliExpress token, missing Claude key) stops the whole job instead of failing every item.
+- **Settings** come from Firestore: `config/secrets` (AliExpress and Claude keys and tokens) and
+  `config/pipeline` (thresholds, models, feeds). The AliExpress token renews itself with the stored
+  refresh token.
+
 ## The pipeline
 
 ```
@@ -13,7 +36,7 @@ feeds ──▶ candidates ──▶ 1 screen ──▶ 2 seller ──▶ 3 rev
  import      queue        (API)       history       (no AI spend yet)     images, reviews     rules       size chart,      live or
                                                                                                          copy, SEO,       pending_review
                                                                                                          prices
-                                                                    monitor (daily) ◀────────────────────────────────────────┘
+                                                                    monitor (on demand) ◀────────────────────────────────────────┘
 ```
 
 1. **Screen** (`vetting/engine.ts › screen`, one `product.get` + one freight quote)
@@ -66,7 +89,7 @@ feeds ──▶ candidates ──▶ 1 screen ──▶ 2 seller ──▶ 3 rev
      Each problem holds the product.
    - **Pricing:** per variant, retail = max(landed × 1.8, landed + $7), rounded up to x.99, where landed = supplier price + US shipping for that size.
    - **Publishing:** only a plain *import* with zero hold reasons is published as `live`. Everything else lands as `pending_review` with the reasons listed.
-7. **Monitor.** For every listed product, daily:
+7. **Monitor** (the Monitor button on Import & vet). For every live, held and paused product:
    - **Pause** when:
      - the supplier listing is off sale;
      - any store rating drops below 4.5;
@@ -77,24 +100,30 @@ feeds ──▶ candidates ──▶ 1 screen ──▶ 2 seller ──▶ 3 rev
 
 ## Data model (Firestore)
 
-| Collection | Who reads it | Contents |
-| --- | --- | --- |
-| `products/{ae-<mainId>}` | Public when `live`; admins always | Title, bullets, FAQ, SEO, images and alts, variants with US names and prices, size guide, delivery window, material, origin, probation counters, hold reasons. |
-| `sourcing/{id}` | Admins | AliExpress ids, store, per-variant cost/shipping/landed/priced cost, stock, last monitor check. Kept private so the supplier isn't exposed on the storefront. |
-| `vetting/{id}` | Admins | The full decision record: every check, metrics, issues with quotes, image findings, seller chart, evidence list and the claims made from it. Kept for rejects too. |
-| `sellers/{storeId}` | Admins | Ratings, strikes, block reasons, shipping fingerprint. |
-| `candidates/{subId}` | Admins | The queue: status, reasons and when to recheck. |
-| `runs/{id}` | Admins | Each pipeline run's counts and errors. |
-| `config/pipeline` | Admins | Threshold overrides (see `vetting/config.ts`). |
-| `config/aliexpress` | Nobody client-side | API tokens. |
+The dashboard reads and writes only from its server, with the Admin SDK. Browsers have no direct
+access to the database except reading live products (for a future storefront or product feed).
 
-Money is integer cents. Timestamps are epoch milliseconds. Only the pipeline writes, using the Admin
-SDK; the rules deny every client write.
+| Collection | Contents |
+| --- | --- |
+| `products/{ae-<mainId>}` | Title, bullets, FAQ, SEO, images and alts, variants with US names and prices, size guide, delivery window, material, origin, probation counters, hold reasons. Public when `live`. |
+| `sourcing/{id}` | AliExpress ids, store, per-variant cost/shipping/landed/priced cost, stock, last monitor check. |
+| `vetting/{id}` | The full decision record: every check, metrics, issues with quotes, image findings, seller chart, evidence list and the claims made from it. |
+| `sellers/{storeId}` | Ratings, strikes, block reasons, shipping fingerprint. |
+| `candidates/{subId}` | The queue: status, reasons and when to recheck. |
+| `jobs/{id}` | Import, vet and monitor runs with progress, counts and a log. |
+| `work/{subId}` | Vetting in progress, saved after every stage. |
+| `config/pipeline` | Thresholds, AI models, feeds, pages per import (Settings → DOLGERS rules). |
+| `config/secrets` | AliExpress app key/secret/tokens and the Claude API key. Never sent to a browser. |
+| `users/{uid}` | `admin: true` marks a dashboard admin. |
+| `sessions/{token}`, `oauth_states/{state}` | Sign-in sessions and the one-time AliExpress connect state. |
+
+Money is integer cents. Timestamps are epoch milliseconds. Queries avoid composite indexes, so
+nothing has to be deployed for them to work.
 
 ## Known limits
 
 - **The review endpoint is undocumented.** It's what the AliExpress product page uses, not part of the official API. If it changes or blocks the job, products fall to *insufficient data*. They are never approved without reviews.
-- **Small samples:** 30 clean buyers still allows a true defect rate up to about 10%. That's why every new product starts on probation, with delisting after 2 defects in the first 40 orders (1 in 20 for probation-tier products). Order intake will drive those counters once checkout exists.
+- **Small samples:** 30 clean buyers still allows a true defect rate up to about 10%. That's why every new product starts on probation, with delisting after 2 defects in the first 40 orders (1 in 20 for probation-tier products). Order intake will drive those counters once order handling exists.
 - **Keyword volumes aren't measured.** SEO keywords are stored as `keywordStatus: 'guess'` until checked in Keyword Planner or Search Console.
 - **AI output can be wrong:**
   - Quotes are verified, review ids that don't exist are dropped, and categories are mapped by code.

@@ -2,15 +2,12 @@ import Link from 'next/link';
 
 export default function NotFound() {
   return (
-    <section className="mx-auto max-w-6xl px-4 py-24 sm:px-6">
-      <h1 className="display text-6xl text-denim-deep">This page isn’t here</h1>
-      <p className="mt-4 max-w-lg text-ink-soft">
-        The product may have sold out or been paused while we re-check it. Browse what’s available instead.
-      </p>
-      <div className="mt-6 flex gap-3">
-        <Link href="/men" className="rounded-md bg-denim px-5 py-3 font-semibold text-paper">Shop men</Link>
-        <Link href="/women" className="rounded-md border border-denim px-5 py-3 font-semibold text-denim">Shop women</Link>
+    <main className="grid min-h-dvh place-items-center p-6 text-center">
+      <div>
+        <p className="display text-5xl">Not found</p>
+        <p className="mt-3 text-ink-soft">That page or record doesn’t exist.</p>
+        <Link href="/" className="mt-6 inline-block font-semibold text-denim underline">Back to the dashboard</Link>
       </div>
-    </section>
+    </main>
   );
 }

@@ -18,35 +18,38 @@ beforeEach(async () => {
     await setDoc(doc(db, 'products/ae-1'), { status: 'live', title: 'Live' });
     await setDoc(doc(db, 'products/ae-2'), { status: 'pending_review', title: 'Held' });
     await setDoc(doc(db, 'vetting/ae-1'), { decision: 'import' });
-    await setDoc(doc(db, 'config/aliexpress'), { accessToken: 'secret' });
+    await setDoc(doc(db, 'config/secrets'), { aeAppSecret: 'secret' });
+    await setDoc(doc(db, 'users/a1'), { admin: true });
+    await setDoc(doc(db, 'sessions/t'), { expiresAt: 1 });
     await setDoc(doc(db, 'config/pipeline'), { maxProblemRate: 0.025 });
   });
 });
 
 const anon = () => env.unauthenticatedContext().firestore();
-const shopper = () => env.authenticatedContext('u1').firestore();
-const admin = () => env.authenticatedContext('a1', { admin: true }).firestore();
+const user = () => env.authenticatedContext('u1').firestore();
+const claimAdmin = () => env.authenticatedContext('a1', { admin: true }).firestore();
 
 test('anyone can read a live product', async () => {
   await assertSucceeds(getDoc(doc(anon(), 'products/ae-1')));
 });
-test('nobody but admins can read a held product', async () => {
+test('nobody can read a held product from a browser', async () => {
   await assertFails(getDoc(doc(anon(), 'products/ae-2')));
-  await assertFails(getDoc(doc(shopper(), 'products/ae-2')));
-  await assertSucceeds(getDoc(doc(admin(), 'products/ae-2')));
+  await assertFails(getDoc(doc(user(), 'products/ae-2')));
+  await assertFails(getDoc(doc(claimAdmin(), 'products/ae-2')));
 });
-test('listing products must be limited to live ones for shoppers', async () => {
+test('listing products must be limited to live ones', async () => {
   await assertSucceeds(getDocs(query(collection(anon(), 'products'), where('status', '==', 'live'))));
   await assertFails(getDocs(collection(anon(), 'products')));
 });
 test('clients cannot write products', async () => {
-  await assertFails(setDoc(doc(admin(), 'products/ae-3'), { status: 'live' }));
+  await assertFails(setDoc(doc(claimAdmin(), 'products/ae-3'), { status: 'live' }));
 });
-test('decision records are admin-only', async () => {
-  await assertFails(getDoc(doc(shopper(), 'vetting/ae-1')));
-  await assertSucceeds(getDoc(doc(admin(), 'vetting/ae-1')));
+test('private collections are closed to every client', async () => {
+  for (const path of ['vetting/ae-1', 'config/pipeline', 'config/secrets', 'users/a1', 'sessions/t']) {
+    await assertFails(getDoc(doc(claimAdmin(), path)));
+    await assertFails(getDoc(doc(user(), path)));
+  }
 });
-test('API tokens are never readable from a client', async () => {
-  await assertFails(getDoc(doc(admin(), 'config/aliexpress')));
-  await assertSucceeds(getDoc(doc(admin(), 'config/pipeline')));
+test('nobody can make themselves an admin', async () => {
+  await assertFails(setDoc(doc(user(), 'users/u1'), { admin: true }));
 });

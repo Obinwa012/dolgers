@@ -1,69 +1,42 @@
 # Deploy
 
-## 1. Firebase
+The dashboard runs on Firebase App Hosting. The backend `dolgers` builds the folder `apps/web` from
+the `main` branch (its configured root directory), so merging to `main` deploys it. Nothing else
+needs a terminal or Cloud Shell.
 
-```bash
-npx firebase use default                 # the "dolgers" project
-npx firebase deploy --only firestore     # rules + indexes
-```
+## First run
 
-Admins need the custom claim `admin: true` to read the review queue. Set it once with the Admin
-SDK, for example `getAuth().setCustomUserClaims(uid, { admin: true })`.
+1. Open https://dolgers--dolgers.us-central1.hosted.app and sign in with your Firebase account
+   (email and password). If no admin exists yet, the first account to sign in becomes the admin;
+   if your account was already an admin in the old dashboard, it still is.
+2. **Settings → AliExpress:** enter the app key and secret, then **Connect AliExpress**. You approve
+   DOLGERS on AliExpress and come back connected; the token then renews itself. The AliExpress
+   app’s callback URL must be `https://dolgers--dolgers.us-central1.hosted.app/api/auth/ae/callback`
+   (the same one the old dashboard used). Press **Test connection**.
+3. **Settings → Claude:** paste a Claude API key from console.anthropic.com and press **Test**.
+4. **Settings → DOLGERS rules:** the defaults are the rules agreed for the store; change any of them
+   there.
+5. **Import & vet:** run an import, then vet.
 
-## 2. Storefront (App Hosting)
+Keys saved before in the old dashboard (`config/secrets`) are picked up as they are.
 
-The App Hosting backend `dolgers` builds the folder `apps/web` from the `main` branch; that is
-already its configured root directory. The site reads products with the backend's service account,
-which only needs read access to Firestore (**Cloud Datastore Viewer**). Nothing on the site writes
-to the database.
+## Good to know
 
-## 3. AliExpress tokens (do this once)
+- **Turn off public sign-up.** Firebase lets anyone create an email/password account with the
+  site’s public key. They can’t get into the dashboard (only admins can), but to keep the account
+  list clean: Firebase console → Authentication → Settings → User actions → untick *Enable create
+  (sign-up)*. Add new admins from Settings → Admins instead.
 
-Tokens pasted by hand expire after about a day and **can't renew themselves**. Connect the app
-properly so a refresh token is stored:
-
-```bash
-npm run pipeline -- auth url --redirect <the callback URL registered on your AliExpress app>
-# open the link, approve, copy `code` from the address bar of the page you land on
-npm run pipeline -- auth exchange <code>
-npm run pipeline -- auth status     # must say "refresh token present"
-```
-
-## 4. Secrets
-
-Put these in Secret Manager and expose them to the job as environment variables:
-
-- `AE_APP_KEY`
-- `AE_APP_SECRET`
-- `ANTHROPIC_API_KEY`
-
-Firestore access uses the job's service account (Application Default Credentials); give it
-**Cloud Datastore User** on the project. Rotate the AliExpress app secret if it has ever been
-pasted into a chat or a ticket.
-
-## 5. Cloud Run job and schedule
-
-```bash
-gcloud builds submit --tag us-central1-docker.pkg.dev/PROJECT/dolgers/pipeline -f apps/pipeline/Dockerfile .
-gcloud run jobs create pipeline --image us-central1-docker.pkg.dev/PROJECT/dolgers/pipeline \
-  --region us-central1 --task-timeout 3600 --max-retries 0 \
-  --set-env-vars GCLOUD_PROJECT=PROJECT \
-  --set-secrets AE_APP_KEY=AE_APP_KEY:latest,AE_APP_SECRET=AE_APP_SECRET:latest,ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest
-```
-
-Then add Cloud Scheduler triggers that run the job with different arguments:
-
-| When | Arguments | Why |
-| --- | --- | --- |
-| Daily 05:00 | `import --department men --pages 10` and the same for `women` | New items enter the queue. |
-| Hourly | `run --limit 25` | About 25 products per hour stays well under AliExpress's rate limit (about 1 call/second). |
-| Daily 07:00 | `monitor` | Price, stock, seller and rating checks; pauses what changed. |
-
-The Docker image hasn't been built in this environment yet; build it once in Cloud Build before
-you schedule anything.
-
-## 6. Costs to expect
-
-- **Claude:** a product that reaches the AI steps costs roughly 5 calls (image check, review analysis, seller size chart, US size chart, listing). Most candidates stop earlier, with no AI cost.
-- **Model choice:** set `AI_MODEL_FAST` / `AI_MODEL_CAREFUL` to trade cost against quality.
-- **Firestore:** a few documents per product, with no hot spots.
+- **Security rules.** The dashboard doesn’t depend on Firestore rules (its server uses the Admin
+  SDK). The rules in `firebase/firestore.rules` close every collection to browsers except live
+  products. To apply them, paste the file into Firebase console → Firestore → Rules → Publish.
+- **Adding admins** (Settings → Admins) uses Firebase Authentication from the server. If it reports
+  a permission error, give the App Hosting service account the *Firebase Authentication Admin* role
+  in the Google Cloud console (IAM).
+- **Rotate the AliExpress app secret** if it has ever been pasted into a chat or a ticket, then save
+  the new one in Settings.
+- **Costs:** a product that reaches the AI steps costs roughly 5–7 Claude calls (photo check, review
+  analysis in chunks of 120 reviews, seller size chart, US size guide, listing). Most items stop at the
+  free checks first. Pick cheaper or stronger models in Settings → Claude.
+- **Not automatic yet:** imports, vetting and monitoring run when you press the buttons. Scheduling
+  them, and placing AliExpress orders automatically, are later phases.

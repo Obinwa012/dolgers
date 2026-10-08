@@ -1,13 +1,19 @@
-# Firebase App Hosting configuration for the DOLGERS storefront.
+# Firebase App Hosting configuration for the DOLGERS admin dashboard.
 # The backend's root directory must be apps/web (this folder).
+#
+# Everything else (AliExpress keys, the Claude key, vetting rules, admins) is set from the
+# dashboard's Settings page and stored in Firestore, so nothing here needs editing to run it.
 runConfig:
   minInstances: 0
-  maxInstances: 5
-  concurrency: 80
+  maxInstances: 3
+  # Each request does one short vetting step; a few at a time per instance is plenty.
+  concurrency: 20
   cpu: 1
-  memoryMiB: 512
+  memoryMiB: 1024
 
 env:
+  # The public address: used for the AliExpress authorization redirect
+  # (SITE_URL/api/auth/ae/callback must be the callback URL in the AliExpress Open Platform console).
   - variable: SITE_URL
     value: https://dolgers--dolgers.us-central1.hosted.app
     availability: [BUILD, RUNTIME]
