@@ -172,8 +172,20 @@ export async function failWork(ctx: PipelineContext, w: WorkState, message: stri
   return finish(ctx, w, 'error', 'error', [`Failed at "${w.stage}": ${message}`], 1);
 }
 
+/** Store ratings read this recently are trusted without asking AliExpress again. */
+const SELLER_MEMORY_DAYS = 14;
+
 async function stageFetch(ctx: PipelineContext, w: WorkState): Promise<StepResult> {
   const { config } = ctx;
+  const now = (ctx.now ?? Date.now)();
+  // Many items come from the same few stores. A store already known to be blocked, or below the
+  // rating bar, fails every item the same way, so skip the API calls for the rest of its items.
+  const shopId = w.candidate.shopId;
+  const known = shopId ? await ctx.repo.getSeller(shopId) : null;
+  if (known?.blocked) return finish(ctx, w, 'rejected', 'rejected', [`Seller blocked: ${known.blockReasons.join('; ')}`], null);
+  if (known?.ratingsCheckedAt && now - known.ratingsCheckedAt < SELLER_MEMORY_DAYS * DAY && !ratingsPass(known.ratings, config)) {
+    return finish(ctx, w, 'screened_out', 'screened_out', [`${ratingsText(known.ratings, config)}, store checked ${new Date(known.ratingsCheckedAt).toISOString().slice(0, 10)}`], 90);
+  }
   let product: ProductSnapshot;
   try {
     product = await ctx.ae.product(w.subId);
@@ -185,6 +197,7 @@ async function stageFetch(ctx: PipelineContext, w: WorkState): Promise<StepResul
   const freight: FreightQuote[] = firstUs ? [await ctx.ae.freight(product.mainId, firstUs.skuId)] : [];
   w.product = product;
   w.freight = freight;
+  await rememberStore(ctx, product, now);
   const sc = screen(product, freight, config);
   const reasons = sc.checks.filter((c) => !c.pass && c.level !== 'info').map((c) => c.detail);
   if (sc.checks.some((c) => !c.pass && c.level === 'reject')) return finish(ctx, w, 'screened_out', 'screened_out', reasons, 90);
@@ -538,6 +551,34 @@ export function garmentKind(subcategory: string | null, title: string): 'tops' |
 
 // ---------------------------------------------------------------- sellers
 
+function ratingsPass(r: SellerDoc['ratings'], config: VettingConfig) {
+  return [r.asDescribed, r.communication, r.shipping].every((x) => x !== null && x >= config.minStoreRating);
+}
+
+function ratingsText(r: SellerDoc['ratings'], config: VettingConfig) {
+  return `As described ${r.asDescribed ?? '–'}, communication ${r.communication ?? '–'}, shipping ${r.shipping ?? '–'} (need ${config.minStoreRating}+ each)`;
+}
+
+/** Keeps every store's latest ratings, so later items from a weak store are screened without API calls. */
+async function rememberStore(ctx: PipelineContext, product: ProductSnapshot, now: number) {
+  const s = product.store;
+  if (!s.storeId) return;
+  const existing = await ctx.repo.getSeller(s.storeId);
+  await ctx.repo.saveSeller({
+    storeId: s.storeId,
+    name: s.name,
+    ratings: s.ratings,
+    productsVetted: existing?.productsVetted ?? 0,
+    productsRejected: existing?.productsRejected ?? 0,
+    strikes: existing?.strikes ?? {},
+    blocked: existing?.blocked ?? false,
+    blockReasons: existing?.blockReasons ?? [],
+    fingerprint: existing?.fingerprint ?? null,
+    ratingsCheckedAt: now,
+    updatedAt: now,
+  });
+}
+
 interface SellerState extends SellerDoc {
   linkedTo: string[];
 }
@@ -567,6 +608,7 @@ async function sellerState(ctx: PipelineContext, product: ProductSnapshot, shipp
     blocked: existing?.blocked ?? false,
     blockReasons: existing?.blockReasons ?? [],
     fingerprint: fp,
+    ratingsCheckedAt: existing?.ratingsCheckedAt,
     updatedAt: Date.now(),
     linkedTo,
   };
