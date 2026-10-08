@@ -218,6 +218,15 @@ function isProductLike(o: unknown): o is Record<string, unknown> {
  * product-like objects (also handles JSON-string-encoded payloads).
  */
 function findProductArray(node: unknown, depth = 0): { list: Record<string, unknown>[]; via: string } | null {
+  // AliExpress sometimes returns the whole products payload as a JSON string.
+  if (typeof node === 'string' && node.trim().startsWith('[')) {
+    try {
+      const parsed = findProductArray(JSON.parse(node) as unknown, depth + 1);
+      if (parsed) return { list: parsed.list, via: `json-string→${parsed.via}` };
+    } catch {
+      /* not JSON */
+    }
+  }
   if (depth > 6 || node === null || typeof node !== 'object') return null;
   if (Array.isArray(node)) {
     if (node.length > 0 && isProductLike(node[0])) return { list: node, via: 'array-scan' };
@@ -440,6 +449,96 @@ export async function aeFreightUS(
     return { options: [], rawKeys, rawSample }; // "not reachable" => no US stock
   }
   return { options: normalizeFreight(result), rawKeys, rawSample };
+}
+
+/**
+ * aliexpress.ds.feedname.get — list the curated dropship feeds this app can see.
+ * Takes no business params. Response:
+ *   aliexpress_ds_feedname_get_response.result.feed_names.feed_name[]
+ */
+export async function aeFeedNames(
+  creds: AeCreds,
+): Promise<{ feeds: string[]; rawKeys: string[]; rawSample: string }> {
+  const payload = (await methodCall(creds, 'aliexpress.ds.feedname.get', {})) as Record<string, unknown>;
+
+  if (payload && typeof payload === 'object' && 'error_response' in payload) {
+    const e = (payload.error_response as Record<string, unknown>) ?? {};
+    throw new Error(`Feed list failed: ${String(e.sub_msg ?? e.msg ?? 'unknown')}`);
+  }
+  const node = (payload?.['aliexpress_ds_feedname_get_response'] as Record<string, unknown>) ?? payload ?? {};
+  const result = (node.result as Record<string, unknown>) ?? {};
+  const rawKeys = Object.keys(result).slice(0, 15);
+  const rawSample = JSON.stringify(result).slice(0, 600);
+  const feedNames = (result.feed_names as Record<string, unknown>) ?? {};
+  const raw = (feedNames.feed_name as unknown[]) ?? [];
+  const feeds = raw
+    .map((f) => {
+      if (typeof f === 'string') return f;
+      if (f && typeof f === 'object') {
+        const o = f as Record<string, unknown>;
+        return str(o.feed_name ?? o.name ?? '');
+      }
+      return '';
+    })
+    .filter(Boolean);
+  return { feeds, rawKeys, rawSample };
+}
+
+/**
+ * aliexpress.ds.recommend.feed.get — page through a named curated feed.
+ * Params (verified against a working third-party integration):
+ *   feed_name, country, target_currency, target_language, page_no, page_size,
+ *   sort ('volumeDesc'), category_id (optional).
+ */
+export async function aeRecommendFeed(
+  creds: AeCreds,
+  opts: { feedName: string; categoryId?: string; pageNo: number; pageSize: number },
+): Promise<{ products: SearchProduct[]; debug: { topKeys: string[]; firstProductKeys: string[]; parseVia: string; rawCount: number; parsedCount: number } }> {
+  const payload = (await methodCall(creds, 'aliexpress.ds.recommend.feed.get', {
+    feed_name: opts.feedName,
+    country: 'US',
+    target_currency: 'USD',
+    target_language: 'EN',
+    page_no: String(opts.pageNo),
+    page_size: String(opts.pageSize),
+    sort: 'volumeDesc',
+    ...(opts.categoryId ? { category_id: opts.categoryId } : {}),
+  })) as Record<string, unknown>;
+
+  if (payload && typeof payload === 'object' && 'error_response' in payload) {
+    const e = (payload.error_response as Record<string, unknown>) ?? {};
+    throw new Error(`Feed read failed: ${String(e.sub_msg ?? e.msg ?? 'unknown')}`);
+  }
+  const node = (payload?.['aliexpress_ds_recommend_feed_get_response'] as Record<string, unknown>) ?? payload ?? {};
+  const code = String(node.code ?? node.rsp_code ?? '');
+  if (code && !['0', '00', '000', '200'].includes(code)) {
+    throw new Error(`Feed read failed (code ${code}): ${String(node.message ?? node.rsp_msg ?? '')}`);
+  }
+  const result = (node.result as unknown) ?? node;
+  const found = findProductArray(result);
+  const raw = found?.list ?? [];
+  const parseVia = found?.via ?? '(none)';
+  const products = (raw as Record<string, unknown>[]).map((r) => ({
+    productId: str(r.product_id ?? r.productId ?? r.itemId ?? r.item_id ?? r.productID ?? r.id),
+    title: str(r.product_title ?? r.productTitle ?? r.title),
+    image: str(r.product_main_image_url ?? r.productMainImageUrl ?? r.itemMainPic ?? r.imageUrl ?? r.image),
+    priceMin: num(r.target_sale_price ?? r.targetSalePrice ?? r.salePrice ?? r.sale_price),
+    priceMax: num(r.target_sale_price_max ?? r.targetSalePriceMax ?? r.target_sale_price ?? r.targetSalePrice ?? r.salePrice ?? r.sale_price),
+    currency: str(r.target_sale_price_currency ?? r.targetOriginalPriceCurrency ?? r.salePriceCurrency ?? r.currency ?? 'USD') || 'USD',
+    rating: normRating(r.score ?? r.evaluate_rate ?? r.evaluateRate),
+    orders: num(r.lastest_volume ?? r.orders),
+  })).filter((p) => p.productId);
+  const first = raw.length > 0 ? (raw[0] as Record<string, unknown>) : {};
+  return {
+    products,
+    debug: {
+      topKeys: Object.keys((payload ?? {}) as Record<string, unknown>).slice(0, 12),
+      firstProductKeys: Object.keys(first).slice(0, 20),
+      parseVia,
+      rawCount: raw.length,
+      parsedCount: products.length,
+    },
+  };
 }
 
 export function buildAuthorizeUrl(appKey: string, redirectUri: string, state: string): string {
