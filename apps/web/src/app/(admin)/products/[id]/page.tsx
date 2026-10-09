@@ -1,10 +1,15 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Badge, btn, Card, KV, PageHeader } from '@/components/ui.tsx';
-import { ago, bySize, DECISION_LABEL, money, pct, PRODUCT_STATUS_LABEL, when } from '@/lib/format.ts';
+import { ISSUE_RULES } from '@/core/vetting/issues.ts';
+import { profitCents } from '@/core/vetting/pricing.ts';
+import { ago, bySize, DECISION_LABEL, lensUrl, money, pct, PRODUCT_STATUS_LABEL, tineyeUrl, when } from '@/lib/format.ts';
 import { repo } from '@/server/firebase.ts';
+import { ClearFlagsButton } from './ClearFlagsButton.tsx';
 import { CopyEditor } from './CopyEditor.tsx';
 import { ProductActions } from './ProductActions.tsx';
+import { QualityPanel } from './QualityPanel.tsx';
+import { ReviewPanel } from './ReviewPanel.tsx';
 import { currentAdmin, requireAdmin } from '@/server/auth.ts';
 
 const BUCKET: Record<string, string> = {
@@ -22,8 +27,13 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
   const { id } = await params;
-  const [p, src, vet] = await Promise.all([repo().getProduct(id), repo().getSourcing(id), repo().getVetting(id)]);
+  const [p, src, vet, config] = await Promise.all([repo().getProduct(id), repo().getSourcing(id), repo().getVetting(id), repo().loadConfig()]);
   if (!p) notFound();
+  const costs = (src?.skus ?? []).map((k) => k.costCents).filter((c) => c > 0);
+  const mismatched = new Map((vet?.photoCheck?.mismatches ?? []).map((m) => [m.reviewId, m.detail]));
+  const topComplaints = (vet?.result.issues ?? []).filter((i) => i.bucket !== 'A' && i.quotes.length).slice(0, 4);
+  const flags = p.flags ?? [];
+  const categories = Object.entries(ISSUE_RULES).map(([key, r]) => ({ key, label: r.label, bucket: r.bucket }));
   const skuById = new Map((src?.skus ?? []).map((s) => [s.aeSkuId, s]));
   const r = vet?.result;
   const m = r?.metrics;
@@ -46,11 +56,87 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
         <ProductActions id={p.id} status={p.status} supplierUrl={src?.supplierUrl ?? null} />
       </PageHeader>
 
-      {p.holdReasons.length > 0 && (
-        <div className="mb-6 rounded-lg border border-warn/30 bg-warn-bg px-4 py-3 text-sm text-warn">
-          <p className="font-semibold">Why this needs you</p>
-          <ul className="mt-1 list-disc pl-5">{p.holdReasons.map((h) => <li key={h}>{h}</li>)}</ul>
+      {flags.some((f) => f.urgent) && (
+        <div className="mb-4 rounded-lg border border-bad/30 bg-bad-bg px-4 py-3 text-sm font-semibold text-bad">
+          {flags.filter((f) => f.urgent).map((f) => <p key={f.text}>{f.text}</p>)}
         </div>
+      )}
+
+      {p.status !== 'retired' && (
+        <Card title={p.status === 'live' ? 'Review record' : 'Your review'} className="mb-6">
+          <div className="mb-4 grid grid-cols-2 gap-3 text-sm md:grid-cols-5">
+            {(
+              [
+                ['Buyers', m ? m.buyers : '—'],
+                ['Problem rate, 95% upper bound', m?.problemRateUpperBound != null ? `${pct(m.problemRateUpperBound)} (limit ${pct(p.decision === 'probation' ? config.probationMaxUpperBound : config.maxProblemUpperBound)})` : '—'],
+                [`Reviews, last ${config.recentDays} days`, m?.recentReviews ?? '—'],
+                ['Our price', p.priceFromCents === p.priceToCents ? money(p.priceFromCents) : `${money(p.priceFromCents)}–${money(p.priceToCents)}`],
+                ['Supplier’s price on AliExpress', costs.length ? (Math.min(...costs) === Math.max(...costs) ? money(costs[0]) : `${money(Math.min(...costs))}–${money(Math.max(...costs))}`) : '—'],
+              ] as const
+            ).map(([k, v]) => (
+              <div key={k} className="rounded-md bg-canvas px-3 py-2">
+                <div className="text-xs text-ink-soft">{k}</div>
+                <div className="tabular font-bold">{v}</div>
+              </div>
+            ))}
+          </div>
+
+          {(p.holdReasons.length > 0 || flags.length > 0) && (
+            <div className="mb-4 rounded-md border border-warn/30 bg-warn-bg px-4 py-3 text-sm text-warn">
+              <div className="flex items-center justify-between gap-3">
+                <p className="font-semibold">Flags</p>
+                {flags.length > 0 && <ClearFlagsButton id={p.id} />}
+              </div>
+              <ul className="mt-1 list-disc pl-5">
+                {p.holdReasons.map((h) => <li key={h}>{h}</li>)}
+                {flags.map((f) => <li key={`${f.at}-${f.text}`}>{f.source === 'monitor' ? 'Monitor' : 'Your customers'}, {when(f.at)}: {f.text}</li>)}
+              </ul>
+            </div>
+          )}
+
+          {topComplaints.length > 0 && (
+            <div className="mb-4">
+              <h3 className="mb-1 text-xs font-bold uppercase tracking-wide text-ink-soft">Top complaints</h3>
+              <ul className="space-y-1 text-sm">
+                {topComplaints.map((i) => (
+                  <li key={i.category}>
+                    <strong>{i.label}</strong> <span className="text-ink-soft">({i.buyers} buyer{i.buyers === 1 ? '' : 's'})</span>: <span className="italic">“{i.quotes[0]}”</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="mb-5 grid gap-4 lg:grid-cols-2">
+            <div>
+              <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-ink-soft">Listing photos</h3>
+              <div className="grid grid-cols-3 gap-2">
+                {p.images.slice(0, 6).map((im) => <Photo key={im.url} url={im.url} alt={im.alt} />)}
+              </div>
+            </div>
+            <div>
+              <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-ink-soft">
+                What buyers received {vet?.photoCheck ? `· ${vet.photoCheck.compared} compared by Claude` : ''}
+              </h3>
+              {vet?.buyerPhotos?.length ? (
+                <div className="grid grid-cols-3 gap-2">
+                  {vet.buyerPhotos.slice(0, 9).map((b) => (
+                    <Photo key={b.reviewId} url={b.url} alt={b.text} caption={`${b.stars}★ · ${b.country || '?'} · ${b.date}`} warning={mismatched.get(b.reviewId)} />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-ink-soft">No buyer photos in the reviews.</p>
+              )}
+              {vet?.photoCheck?.quality && <p className="mt-2 text-sm"><span className="font-semibold">Fabric and stitching: </span>{vet.photoCheck.quality}</p>}
+            </div>
+          </div>
+
+          {p.status === 'live' ? (
+            <p className="text-sm text-ink-soft">Published {when(p.publishedAt)}{p.review?.by ? ` after checks by ${p.review.by}` : ''}.</p>
+          ) : (
+            <ReviewPanel id={p.id} checks={p.review ?? null} canPublish={p.status === 'pending_review' || p.status === 'paused'} probation={p.decision === 'probation'} />
+          )}
+        </Card>
       )}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
@@ -81,34 +167,42 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
             />
           </Card>
 
-          {p.sizeChart && (
-            <Card title={`Size guide · ${p.sizeChart.fitType}`}>
+          {p.sizeChart && 'columns' in p.sizeChart && (
+            <Card title={`Size guide · ${p.sizeChart.label}`}>
+              <p className="mb-2 text-sm text-ink-soft">
+                {p.sizeChart.fitType} · inches ·{' '}
+                {p.sizeChart.measurementType === 'garment' ? 'garment measurements (the item laid flat)' : p.sizeChart.measurementType === 'body' ? 'body measurements the size fits' : 'the supplier doesn’t say whether these measure the garment or the body'}
+              </p>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead className="text-xs uppercase tracking-wide text-ink-soft">
                     <tr>
                       <th className="py-1.5 pr-3">Size</th>
-                      <th className="py-1.5 pr-3">Fits body (in)</th>
-                      <th className="py-1.5 pr-3">Garment (in)</th>
-                      <th className="py-1.5">Confidence</th>
+                      {p.sizeChart.columns.map((c) => <th key={c} className="py-1.5 pr-3 capitalize">{c}</th>)}
+                      <th className="py-1.5">US buyers say</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-line">
+                  <tbody className="tabular divide-y divide-line">
                     {[...p.sizeChart.rows].sort(bySize).map((row) => (
                       <tr key={row.size}>
-                        <td className="py-1.5 pr-3 font-semibold">{row.usSizeLabel || row.size}</td>
-                        <td className="py-1.5 pr-3">{row.fitsBody.map((b) => `${b.measure} ${b.min}–${b.max}`).join(', ')}</td>
-                        <td className="py-1.5 pr-3 text-ink-soft">{Object.entries(row.garment).map(([k, v]) => `${k} ${v}`).join(', ') || '—'}</td>
-                        <td className="py-1.5"><Badge tone={row.confidence === 'high' ? 'good' : row.confidence === 'medium' ? 'info' : 'warn'}>{row.confidence}</Badge></td>
+                        <td className="py-1.5 pr-3 font-semibold">{row.size}</td>
+                        {p.sizeChart!.columns.map((c) => <td key={c} className="py-1.5 pr-3">{row.measurements[c] ?? '—'}</td>)}
+                        <td className="py-1.5 text-ink-soft">{row.note ?? ''}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
               {p.sizeChart.fitNotes.length > 0 && <ul className="mt-3 list-disc pl-5 text-sm">{p.sizeChart.fitNotes.map((n) => <li key={n}>{n}</li>)}</ul>}
-              {vet?.usSizeChartReasoning && <p className="mt-3 text-xs text-ink-soft">How it was built: {vet.usSizeChartReasoning}</p>}
+              {vet?.usSizeChartReasoning && <p className="mt-3 text-xs text-ink-soft">How the fit advice was built: {vet.usSizeChartReasoning}</p>}
             </Card>
           )}
+          {p.sizeChart && !('columns' in p.sizeChart) && (
+            <Card title="Size guide">
+              <p className="text-sm text-warn">This size guide was built by the old method, which blended in generic US sizing. Re-vet the product to rebuild it from the supplier’s measurements.</p>
+            </Card>
+          )}
+          {!p.sizeChart && <Card title="Size guide"><p className="text-sm text-warn">No supplier size chart was found, so there is no size guide.</p></Card>}
 
           <Card title="Search preview">
             <div className="max-w-xl">
@@ -140,14 +234,14 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                     <th className="py-1.5 pr-2 text-right">Price</th>
                     <th className="py-1.5 pr-2 text-right">Cost</th>
                     <th className="py-1.5 pr-2 text-right">Ship</th>
-                    <th className="py-1.5 pr-2 text-right">Profit</th>
+                    <th className="py-1.5 pr-2 text-right" title="After the return reserve and payment fees">Profit</th>
                     <th className="py-1.5 text-right">Stock</th>
                   </tr>
                 </thead>
                 <tbody className="tabular divide-y divide-line">
                   {[...p.variants].sort((a, b) => a.color.localeCompare(b.color) || bySize(a, b)).map((v) => {
                     const s = skuById.get(v.id);
-                    const profit = s ? v.priceCents - s.landedCents : null;
+                    const profit = s ? profitCents(v.priceCents, s.landedCents, config.pricing) : null;
                     const drift = s && s.pricedLandedCents && s.landedCents !== s.pricedLandedCents;
                     return (
                       <tr key={v.id} className={v.inStock ? '' : 'text-ink-soft'}>
@@ -155,7 +249,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                         <td className="py-1.5 pr-2 text-right font-semibold">{money(v.priceCents)}</td>
                         <td className="py-1.5 pr-2 text-right">{money(s?.costCents)}</td>
                         <td className="py-1.5 pr-2 text-right">{money(s?.shippingCents)}</td>
-                        <td className={`py-1.5 pr-2 text-right ${profit !== null && profit < 500 ? 'text-bad' : ''}`}>
+                        <td className={`py-1.5 pr-2 text-right ${profit !== null && profit < config.pricing.minProfitCents ? 'text-bad' : ''}`}>
                           {money(profit)}
                           {drift && <span className="block text-[11px] text-warn">cost moved, reprice</span>}
                         </td>
@@ -192,7 +286,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                     ['Buyers reviewed', m.buyers],
                     ['With written reviews', m.textBuyers],
                     ['US buyers', m.usBuyers],
-                    ['Problem rate', `${pct(m.problemRate)}${m.problemRateUpperBound !== null ? ` (≤${pct(m.problemRateUpperBound)})` : ''}`],
+                    ['Problem rate', `${pct(m.problemRate)}${m.problemRateUpperBound !== null ? ` (95% bound ${pct(m.problemRateUpperBound)})` : ''}`],
                     ['Ships from US', pct(m.usVariantShare, 0)],
                     ['China carriers', pct(m.chinaLogisticsShare, 0)],
                   ] as const
@@ -241,7 +335,8 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
               {vet.imageCheck && (
                 <p className="mt-4 text-sm">
                   <span className="font-semibold">Photo check: </span>
-                  {vet.imageCheck.ipRisk ? <span className="text-bad">possible brand or likeness: {vet.imageCheck.findings.join('; ')}</span> : `no brands or likenesses found in ${vet.imageCheck.checked} photos`}
+                  {vet.imageCheck.ipRisk ? <span className="text-bad">possible brand or likeness: {vet.imageCheck.findings.join('; ')}</span> : `no logos, celebrities or characters found in ${vet.imageCheck.checked} photos`}
+                  {vet.imageCheck.resemblance && <span className="block text-warn">Design resembles {vet.imageCheck.resemblance.brand}: {vet.imageCheck.resemblance.reason}</span>}
                 </p>
               )}
               {vet.listingProblems.length > 0 && (
@@ -254,8 +349,39 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
               </p>
             </Card>
           )}
+          <Card title="Your customers">
+            {p.quality ? (
+              <p className="mb-3 text-sm">
+                {p.quality.orders} orders · {p.quality.refunds} refunds
+                {p.quality.orders ? ` (${pct(p.quality.refunds / p.quality.orders, 0)})` : ''} · {p.quality.complaintsC} unfixable and {p.quality.complaintsB} other complaints · {p.quality.disputes} disputes
+                {p.probation.active && ` · probation ${p.probation.defects} defects in ${p.probation.orders}/${p.probation.windowOrders} orders`}
+              </p>
+            ) : (
+              <p className="mb-3 text-sm text-ink-soft">Nothing recorded yet. Until orders flow in automatically, record them here: an unfixable complaint pauses the product, a refund rate over {pct(config.maxRefundRate, 0)} (after {config.refundRateMinOrders} orders) pauses it, and a payment dispute flags it for review today.</p>
+            )}
+            <QualityPanel id={p.id} categories={categories} />
+          </Card>
         </div>
       </div>
     </>
+  );
+}
+
+
+function Photo({ url, alt, caption, warning }: { url: string; alt: string; caption?: string; warning?: string }) {
+  return (
+    <figure className="min-w-0">
+      <a href={url} target="_blank" rel="noreferrer" className="block">
+        <img src={url} alt={alt} title={alt} loading="lazy" className={`aspect-square w-full rounded border object-cover ${warning ? 'border-bad ring-2 ring-bad' : 'border-line'}`} />
+      </a>
+      <figcaption className="mt-1 text-[11px] leading-tight">
+        {caption && <span className="block text-ink-soft">{caption}</span>}
+        {warning && <span className="block text-bad">Doesn’t match: {warning}</span>}
+        <span className="flex gap-2">
+          <a href={lensUrl(url)} target="_blank" rel="noreferrer" className="font-semibold text-denim underline">Lens</a>
+          <a href={tineyeUrl(url)} target="_blank" rel="noreferrer" className="font-semibold text-denim underline">TinEye</a>
+        </span>
+      </figcaption>
+    </figure>
   );
 }

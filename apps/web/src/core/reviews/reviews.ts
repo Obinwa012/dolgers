@@ -31,6 +31,10 @@ export function parseReviewItem(raw: unknown): Review {
     text: translated || str(r.buyerFeedback).trim(),
     additionalText: str(r.buyerAddFbTranslation || r.buyerAddFbContent).trim(),
     images: asArray(r.images as unknown[]).length,
+    imageUrls: asArray(r.images as unknown[])
+      .map((x) => (typeof x === 'string' ? x : str(obj(x).url ?? obj(x).imgUrl)))
+      .filter((u) => /^https:\/\//.test(u))
+      .slice(0, 3),
     labels,
     selected: r.selectedReview === true,
   };
@@ -132,7 +136,7 @@ export function assembleReviews(
   const sampled = first.totalPages > o.maxPages;
   // Complete = we hold (nearly) every written review, or a full sample of a very large listing.
   const complete = !o.failed && (sampled || unique.length >= Math.floor(first.writtenTotal * 0.95));
-  return { mainId, ...first.set, reviews: unique, complete, sampled, fetchedAt: Date.now() };
+  return { mainId, ...first.set, reviews: unique, writtenTotal: first.writtenTotal, complete, sampled, fetchedAt: Date.now() };
 }
 
 export async function fetchReviews(mainId: string, o: ReviewFetcherOptions = {}): Promise<ReviewSet> {

@@ -14,7 +14,7 @@
  *
  * productId = "ae-" + AliExpress main product id, so a product is never imported twice.
  */
-import type { UsSizeChart } from '../ai/size-chart.ts';
+import type { SizeGuide } from '../ai/size-chart.ts';
 import type { ListingDraft, StoreCategory } from '../listing/listing.ts';
 import type { Cents, ShippingOption } from '../types.ts';
 import type { Decision, VetResult } from '../vetting/engine.ts';
@@ -54,12 +54,67 @@ export interface ProductDoc {
   delivery: { minDays: number | null; maxDays: number | null };
   material: string | null;
   origin: 'Imported';
-  sizeChart: Pick<UsSizeChart, 'fitType' | 'rows' | 'fitNotes'> | null;
+  sizeChart: Omit<SizeGuide, 'basis' | 'reasoning'> | null;
   /** First-orders monitoring: delist rule applies until enough clean orders are seen. */
   probation: { active: boolean; orders: number; defects: number; maxDefects: number; windowOrders: number };
+  /** The three checks you tick before publishing (reset whenever the product is vetted again). */
+  review?: ReviewChecks;
+  /** Things that came up after vetting: Monitor findings and your customers' reports. */
+  flags?: ProductFlag[];
+  /** Your own orders, refunds, complaints and disputes. */
+  quality?: QualityRecord;
   createdAt: number;
   updatedAt: number;
   publishedAt: number | null;
+}
+
+export interface ReviewChecks {
+  reverseImage: boolean;
+  noBrandResemblance: boolean;
+  listingRead: boolean;
+  by: string | null;
+  at: number | null;
+}
+
+export interface ProductFlag {
+  at: number;
+  source: 'monitor' | 'customer';
+  text: string;
+  /** Needs a look today (payment disputes). */
+  urgent?: boolean;
+}
+
+export interface QualityEvent {
+  at: number;
+  kind: 'orders' | 'refund' | 'complaint' | 'dispute';
+  count: number;
+  category: string | null;
+  bucket: 'A' | 'B' | 'C' | null;
+  note: string;
+  by: string;
+}
+
+export interface QualityRecord {
+  orders: number;
+  refunds: number;
+  complaintsB: number;
+  complaintsC: number;
+  disputes: number;
+  events: QualityEvent[];
+}
+
+/** deletions/{id}: a product you deleted at review, and why. Reviewed monthly to find new rules. */
+export interface DeletionDoc {
+  id: string;
+  productId: string;
+  title: string;
+  reason: string;
+  note: string;
+  decision: string;
+  storeId: string | null;
+  aeSubId: string | null;
+  by: string;
+  at: number;
 }
 
 export interface SourcingSku {
@@ -85,6 +140,10 @@ export interface SourcingDoc {
   supplierUrl: string;
   lastCheckedAt: number;
   lastCheck: { ok: boolean; notes: string[] };
+  /** The supplier's listing as vetted, so Monitor can flag changed photos, title or material. */
+  supplier?: { title: string; images: string[]; material: string | null };
+  /** Reviews Monitor has already seen, so only new ones are read. */
+  reviewWatch?: { seenIds: string[]; lastCheckedAt: number };
   updatedAt: number;
 }
 
@@ -94,7 +153,11 @@ export interface VettingDoc {
   result: VetResult;
   reviewSummary: string;
   materialFromReviews: string | null;
-  imageCheck: { ipRisk: boolean; findings: string[]; printDescription: string; checked: number } | null;
+  imageCheck: { ipRisk: boolean; findings: string[]; printDescription: string; checked: number; resemblance?: { brand: string; reason: string } | null } | null;
+  /** Gallery compared with buyers' photos. */
+  photoCheck?: import('../vetting/engine.ts').PhotoCheck | null;
+  /** Buyers' photos with their review, for the side-by-side on the review page. */
+  buyerPhotos?: { reviewId: string; url: string; stars: number; country: string; date: string; text: string }[];
   sellerSizeChart: unknown;
   usSizeChartReasoning: string | null;
   listingProblems: string[];
@@ -230,6 +293,7 @@ export type WorkStage =
   | 'reviews'
   | 'images'
   | 'analysis'
+  | 'photos'
   | 'decide'
   | 'seller_chart'
   | 'us_chart'
@@ -254,7 +318,8 @@ export interface WorkState {
   reviewsFirst?: { set: Omit<import('../types.ts').ReviewSet, 'mainId' | 'reviews' | 'complete' | 'sampled' | 'fetchedAt'>; totalPages: number; writtenTotal: number };
   reviewsNextPage?: number;
   reviewsFailed?: boolean;
-  imageCheck?: { ipRisk: boolean; findings: string[]; printDescription: string; checked: number };
+  imageCheck?: { ipRisk: boolean; findings: string[]; printDescription: string; checked: number; resemblance?: { brand: string; reason: string } | null };
+  photoCheck?: import('../vetting/engine.ts').PhotoCheck;
   analysisChunk?: number;
   analysisParts?: import('../vetting/engine.ts').ReviewAnalysis[];
   analysis?: import('../vetting/engine.ts').ReviewAnalysis;
@@ -262,7 +327,7 @@ export interface WorkState {
   holdReasons?: string[];
   material?: string | null;
   sellerChart?: import('../ai/size-chart.ts').SellerSizeChart;
-  usChart?: UsSizeChart | null;
+  usChart?: SizeGuide | null;
   shipping?: Record<string, number>;
   listing?: import('../listing/listing.ts').ListingResult;
   outcome?: string;

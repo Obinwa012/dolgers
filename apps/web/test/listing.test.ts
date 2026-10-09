@@ -22,7 +22,7 @@ const draft = (o: Partial<ListingDraft> = {}): ListingDraft => ({
   storeCategory: 'joggers',
   seo: { title: "Men's Cargo Jogger Pants", metaDescription: 'Relaxed joggers.', primaryKeyword: 'cargo joggers', secondaryKeywords: [] },
   bullets: ['Polyester'],
-  description: ['Relaxed fit.'],
+  description: ['Relaxed fit. Imported.'],
   faq: [],
   variants: [{ skuId: 's1', color: 'Black', size: 'L' }],
   imageAlts: [],
@@ -34,6 +34,10 @@ const check = (d: ListingDraft, i = input()) => validateListing(d, i, evidence, 
 describe('validateListing', () => {
   it('passes a clean listing', () => {
     expect(check(draft())).toEqual([]);
+  });
+
+  it('requires the listing to say "Imported"', () => {
+    expect(check(draft({ description: ['Relaxed fit.'] })).join()).toMatch(/Imported/);
   });
 
   it.each(['Made in USA', 'Made in the U.S.', 'made in US', 'USA-made', 'American made', 'Proudly manufactured in America'])(

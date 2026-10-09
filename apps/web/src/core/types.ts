@@ -99,6 +99,8 @@ export interface Review {
   text: string;
   additionalText: string;
   images: number;
+  /** Up to three of the buyer's photo URLs. */
+  imageUrls?: string[];
   labels: Record<string, string>;
   selected: boolean;
 }
@@ -117,6 +119,8 @@ export interface ReviewSet {
   stats: ReviewStats;
   filterCounts: Record<string, number>;
   reviews: Review[];
+  /** Written reviews the listing says it has (the list above may be a sample of them). */
+  writtenTotal?: number;
   /** False when pages that should exist could not be fetched. */
   complete: boolean;
   /** True when the listing has more reviews than we fetch (the most recent pages are a sample). */

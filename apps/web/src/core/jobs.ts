@@ -277,6 +277,7 @@ async function monitorStep(ctx: PipelineContext, job: JobDoc, patch: Partial<Job
 export function outcomeLabel(o: string): string {
   return (
     {
+      ready: 'Passed: ready for your review',
       published: 'Published',
       held: 'Held for your review',
       insufficient_data: 'Not enough data yet',

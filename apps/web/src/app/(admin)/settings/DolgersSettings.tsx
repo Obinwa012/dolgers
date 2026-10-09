@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { btn, Card, Field, input } from '@/components/ui.tsx';
 import type { VettingConfig } from '@/core/vetting/config.ts';
+import { profitCents, retailPriceCents } from '@/core/vetting/pricing.ts';
 import { resetDolgers, saveDolgers } from '@/server/actions/settings.ts';
 
 type Kind = 'num' | 'pct' | 'usd' | 'int';
@@ -18,18 +19,36 @@ const GROUPS: { title: string; fields: Def[] }[] = [
   {
     title: 'Reviews',
     fields: [
-      { path: 'importMinBuyers', label: 'Buyers needed to import', kind: 'int', hint: 'Unique buyers with reviews on this exact listing.' },
-      { path: 'importMinTextReviews', label: 'Written reviews needed to import', kind: 'int', hint: 'Stars alone can’t tell us what went wrong.' },
-      { path: 'probationMinBuyers', label: 'Buyers needed for probation', kind: 'int', hint: 'Fewer buyers, but a strong seller: goes live on probation.' },
-      { path: 'maxProblemRate', label: 'Most buyers with problems', kind: 'pct', hint: 'After listing fixes. 2.5% = 1 in 40.' },
-      { path: 'systemicRejectBuyers', label: 'Buyers with the same unfixable problem to reject', kind: 'int', hint: 'Fewer than this sends it to you instead.' },
+      { path: 'probationMinBuyers', label: 'Buyers needed to vet at all', kind: 'int', hint: 'Unique buyers with reviews on this exact listing. Fewer is “not enough data”, rechecked later.' },
+      { path: 'importMinBuyers', label: 'Buyers needed for a full import', kind: 'int', hint: 'Between the two: probation, which needs a strong seller.' },
+      { path: 'importMinTextReviews', label: 'Written reviews needed for a full import', kind: 'int', hint: 'Stars alone can’t tell us what went wrong.' },
+      { path: 'minRecentReviews', label: 'Recent reviews needed', kind: 'int', hint: 'Reviews written in the recent window below; shows the product as it’s made now.' },
+      { path: 'recentDays', label: 'Recent window (days)', kind: 'int', hint: '' },
+    ],
+  },
+  {
+    title: 'Problem rates',
+    fields: [
+      { path: 'maxProblemUpperBound', label: 'Customer-service problems: upper bound limit', kind: 'pct', hint: '95% upper bound on the share of buyers with a problem. At 5%: 52 buyers with none, about 87 with one.' },
+      { path: 'probationMaxUpperBound', label: 'Same limit for probation products', kind: 'pct', hint: 'At 5%, probation needs 52+ buyers with no problems. 12% lets 20 problem-free buyers through.' },
+      { path: 'systemicRejectBuyers', label: 'Unfixable problem: buyers to reject', kind: 'int', hint: 'Fewer flags it for you. Fake tracking, IP and safety reject on one report.' },
+      { path: 'systemicRejectShare', label: '…and more than this share of buyers', kind: 'pct', hint: '' },
+      { path: 'recentProblemRatio', label: 'Flag when the recent problem rate is this many times the overall rate', kind: 'num', hint: 'Catches quality going down.' },
+    ],
+  },
+  {
+    title: 'Fake reviews (flags)',
+    fields: [
+      { path: 'fakeReviews.burstShare', label: 'Share of reviews on the 3 busiest days', kind: 'pct', hint: '' },
+      { path: 'fakeReviews.duplicateReviews', label: 'Near-identical reviews', kind: 'int', hint: '' },
+      { path: 'fakeReviews.noText5StarShare', label: 'Share of ratings that are 5★ with no text', kind: 'pct', hint: '' },
     ],
   },
   {
     title: 'Seller',
     fields: [
       { path: 'minStoreRating', label: 'Lowest store rating', kind: 'num', hint: 'Each of the three AliExpress store ratings, out of 5.' },
-      { path: 'strongSellerRating', label: 'Strong seller rating', kind: 'num', hint: 'All three at or above this can back a probation product.' },
+      { path: 'strongSellerRating', label: 'Strong seller rating (needed for probation)', kind: 'num', hint: 'All three at or above this.' },
     ],
   },
   {
@@ -37,7 +56,7 @@ const GROUPS: { title: string; fields: Def[] }[] = [
     fields: [
       { path: 'minUsVariantShare', label: 'Reviews that must say “Ships from United States”', kind: 'pct', hint: 'Catches “US” listings that really ship from China.' },
       { path: 'maxChinaLogisticsShare', label: 'Most reviews shipped by a China carrier', kind: 'pct', hint: '' },
-      { path: 'maxDeliveryDays', label: 'Longest delivery promise (days)', kind: 'int', hint: '' },
+      { path: 'maxDeliveryDays', label: 'Flag delivery promises longer than (days)', kind: 'int', hint: '' },
       { path: 'suspiciousShippingMaxFeeCents', label: 'Suspicious “Priority” fee at or under', kind: 'usd', hint: 'Cheap “Priority” shipping on a cheap item is a red flag…' },
       { path: 'suspiciousShippingMaxItemCents', label: '…on an item priced at or under', kind: 'usd', hint: '' },
     ],
@@ -45,9 +64,19 @@ const GROUPS: { title: string; fields: Def[] }[] = [
   {
     title: 'Pricing',
     fields: [
-      { path: 'pricing.markup', label: 'Markup on landed cost (×)', kind: 'num', hint: 'Landed cost = item + shipping to the customer. Prices end in .99.' },
-      { path: 'pricing.minProfitCents', label: 'Minimum profit per item', kind: 'usd', hint: '' },
-      { path: 'pricing.maxCostChangeBeforePause', label: 'Cost change that pauses a live product', kind: 'pct', hint: 'Found by Monitor. You reprice and approve it again.' },
+      { path: 'pricing.profitCents', label: 'Profit per item prices are set from', kind: 'usd', hint: 'Price = (cost + return reserve + profit + fixed fee) ÷ (1 − fee rate), rounded up to $X.99.' },
+      { path: 'pricing.minProfitCents', label: 'Minimum profit before Monitor pauses', kind: 'usd', hint: 'When the supplier’s cost rises this far.' },
+      { path: 'pricing.returnReserveRate', label: 'Return reserve', kind: 'pct', hint: 'Of (cost + return shipping) set aside per sale.' },
+      { path: 'pricing.returnShippingCents', label: 'Return shipping in the reserve', kind: 'usd', hint: '' },
+      { path: 'pricing.paymentFeeRate', label: 'Payment fee rate', kind: 'pct', hint: '' },
+      { path: 'pricing.paymentFeeFixedCents', label: 'Payment fee per order', kind: 'usd', hint: '' },
+    ],
+  },
+  {
+    title: 'Your orders',
+    fields: [
+      { path: 'maxRefundRate', label: 'Pause when the refund rate passes', kind: 'pct', hint: '' },
+      { path: 'refundRateMinOrders', label: '…once a product has this many orders', kind: 'int', hint: 'One of your customers reporting an unfixable problem pauses it at once.' },
     ],
   },
   {
@@ -124,6 +153,13 @@ export function DolgersSettings({
               );
             })}
             {g.title === 'Pricing' && (
+              <p className="self-end pb-2 text-sm">
+                Example: <span className="tabular font-semibold">$13.00</span> cost →{' '}
+                <span className="tabular font-semibold">${(retailPriceCents(1300, c.pricing) / 100).toFixed(2)}</span>, profit{' '}
+                <span className="tabular font-semibold">${(profitCents(retailPriceCents(1300, c.pricing), 1300, c.pricing) / 100).toFixed(2)}</span>
+              </p>
+            )}
+            {g.title === 'Pricing' && (
               <label className="flex items-center gap-2 self-end pb-2 text-sm font-semibold">
                 <input type="checkbox" checked={c.pricing.freeShipping} onChange={(e) => setC(set(c, 'pricing.freeShipping', e.target.checked))} />
                 Free shipping (shipping is built into the price)
@@ -133,7 +169,7 @@ export function DolgersSettings({
         </Card>
       ))}
       <Card title="Brands and names we never sell">
-        <Field label="Blocked words" hint="Comma separated. A title or attribute containing one is rejected as an IP risk.">
+        <Field label="Blocked words" hint="Comma separated. A title containing one, or a near-miss spelling of a brand name (Addidas, Carhart), is rejected. Note that “inspired” also blocks phrases like “vintage-inspired”.">
           <textarea className={`${input} min-h-32 font-mono text-xs`} value={blockText} onChange={(e) => setBlockText(e.target.value)} />
         </Field>
       </Card>

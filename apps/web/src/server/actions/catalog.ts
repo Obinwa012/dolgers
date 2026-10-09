@@ -1,13 +1,15 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import type { CandidateDoc, ProductDoc } from '@/core/firestore/model.ts';
-import { pauseSellerProducts, repriceVariants } from '@/core/stages.ts';
+import type { CandidateDoc, DeletionDoc, ProductDoc, QualityEvent } from '@/core/firestore/model.ts';
+import { applyQualityEvent } from '@/core/quality.ts';
+import { ISSUE_RULES, type IssueCategory } from '@/core/vetting/issues.ts';
+import { CLEARED_CHECKS, pauseSellerProducts, repriceVariants } from '@/core/stages.ts';
 import { adminOrThrow } from '../auth.ts';
 import { db, repo } from '../firebase.ts';
 import { fail, type Result } from './result.ts';
 
-export type ProductAction = 'approve' | 'pause' | 'retire' | 'reprice' | 'requeue' | 'delete';
+export type ProductAction = 'approve' | 'pause' | 'retire' | 'reprice' | 'requeue';
 
 export async function productAction(id: string, action: ProductAction): Promise<Result<{ subId?: string }>> {
   try {
@@ -19,14 +21,19 @@ export async function productAction(id: string, action: ProductAction): Promise<
     const now = Date.now();
     switch (action) {
       case 'approve': {
+        if (p.status !== 'pending_review' && p.status !== 'paused') return { ok: false, error: `A ${p.status} product can’t be published from here.` };
         if (!p.variants.length || !p.variants.some((v) => v.inStock)) return { ok: false, error: 'No variant is in stock, so it can’t go live.' };
         if (p.variants.some((v) => !(v.priceCents > 0))) return { ok: false, error: 'Some variants have no price. Reprice first.' };
+        const rc = p.review;
+        if (!rc?.reverseImage || !rc.noBrandResemblance || !rc.listingRead) {
+          return { ok: false, error: 'Tick all three checks before publishing.' };
+        }
         await r.updateProduct(id, { status: 'live', holdReasons: [], publishedAt: p.publishedAt ?? now, updatedAt: now });
         if (src) await r.updateCandidate(src.aeSubId, { status: 'published', reasons: [`Approved by ${me.email}`] }).catch(() => {});
         break;
       }
       case 'pause':
-        await r.updateProduct(id, { status: 'paused', holdReasons: [`Paused by ${me.email}`], updatedAt: now });
+        await r.updateProduct(id, { status: 'paused', holdReasons: [`Paused by ${me.email}`], review: CLEARED_CHECKS, updatedAt: now });
         break;
       case 'retire':
         await r.updateProduct(id, { status: 'retired', updatedAt: now });
@@ -56,15 +63,108 @@ export async function productAction(id: string, action: ProductAction): Promise<
         revalidatePath('/products');
         return { ok: true, subId: src.aeSubId };
       }
-      case 'delete': {
-        if (p.status !== 'retired') return { ok: false, error: 'Retire the product before deleting it.' };
-        const batch = db().batch();
-        for (const col of ['products', 'sourcing', 'vetting']) batch.delete(db().collection(col).doc(id));
-        await batch.commit();
-        break;
-      }
     }
     revalidatePath('/products');
+    revalidatePath(`/products/${id}`);
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export type CheckKey = 'reverseImage' | 'noBrandResemblance' | 'listingRead';
+
+/** One of the three checks you tick on the review page before the publish button unlocks. */
+export async function setReviewCheck(id: string, key: CheckKey, value: boolean): Promise<Result> {
+  try {
+    const me = await adminOrThrow();
+    const p = await repo().getProduct(id);
+    if (!p) return { ok: false, error: 'Product not found' };
+    const review = { reverseImage: false, noBrandResemblance: false, listingRead: false, ...(p.review ?? {}), [key]: value, by: me.email, at: Date.now() };
+    await repo().updateProduct(id, { review });
+    revalidatePath(`/products/${id}`);
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+
+/** Deletes a product at review and records why, so recurring reasons can become rules. */
+export async function deleteProduct(id: string, reason: string, note: string): Promise<Result> {
+  try {
+    const me = await adminOrThrow();
+    if (!reason.trim()) return { ok: false, error: 'Choose a reason.' };
+    if (reason === 'Other' && !note.trim()) return { ok: false, error: 'Say why in the note.' };
+    const r = repo();
+    const p = await r.getProduct(id);
+    if (!p) return { ok: false, error: 'Product not found' };
+    const src = await r.getSourcing(id);
+    const now = Date.now();
+    const deletion: DeletionDoc = {
+      id: `${now}-${id}`,
+      productId: id,
+      title: p.title,
+      reason: reason.trim().slice(0, 200),
+      note: note.trim().slice(0, 1000),
+      decision: p.decision,
+      storeId: src?.storeId ?? null,
+      aeSubId: src?.aeSubId ?? null,
+      by: me.email,
+      at: now,
+    };
+    const batch = db().batch();
+    batch.set(db().collection('deletions').doc(deletion.id), deletion);
+    for (const col of ['products', 'sourcing', 'vetting']) batch.delete(db().collection(col).doc(id));
+    await batch.commit();
+    // Never re-import it.
+    if (src) await r.updateCandidate(src.aeSubId, { status: 'rejected', nextCheckAt: null, reasons: [`Deleted at review: ${deletion.reason}${deletion.note ? ` (${deletion.note})` : ''}`] });
+    revalidatePath('/products');
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export interface QualityInput {
+  kind: QualityEvent['kind'];
+  count: number;
+  category: string | null;
+  note: string;
+}
+
+/** Records your own orders, refunds, complaints and disputes against a product, and applies the rules. */
+export async function recordQuality(id: string, input: QualityInput): Promise<Result<{ notes: string[] }>> {
+  try {
+    const me = await adminOrThrow();
+    const r = repo();
+    const p = await r.getProduct(id);
+    if (!p) return { ok: false, error: 'Product not found' };
+    if (input.kind === 'complaint' && !input.category) return { ok: false, error: 'Choose what the complaint was about.' };
+    const config = await r.loadConfig();
+    const category = input.category && input.category in ISSUE_RULES ? (input.category as IssueCategory) : null;
+    const ev: QualityEvent = {
+      at: Date.now(),
+      kind: input.kind,
+      count: Math.max(1, Math.min(10_000, Math.round(input.count) || 1)),
+      category,
+      bucket: category ? ISSUE_RULES[category].bucket : null,
+      note: input.note.trim().slice(0, 500),
+      by: me.email,
+    };
+    const { patch, notes } = applyQualityEvent(p, ev, config);
+    await r.updateProduct(id, patch);
+    revalidatePath(`/products/${id}`);
+    return { ok: true, notes };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export async function clearFlags(id: string): Promise<Result> {
+  try {
+    await adminOrThrow();
+    await repo().updateProduct(id, { flags: [] });
     revalidatePath(`/products/${id}`);
     return { ok: true };
   } catch (e) {

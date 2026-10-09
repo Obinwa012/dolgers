@@ -1,7 +1,8 @@
 import type { FreightQuote, ProductSnapshot, Review, ReviewSet, ShippingOption } from '../types.ts';
 import { groupBuyers, isChinaLogistics, isPooled } from '../reviews/reviews.ts';
-import type { VettingConfig } from './config.ts';
+import { NON_BRAND_TERMS, type VettingConfig } from './config.ts';
 import { type Bucket, type IssueCategory, ISSUE_RULES, ruleFor } from './issues.ts';
+import { fakeReviewSignals, isRecent, wilsonUpper } from './stats.ts';
 
 export type CheckLevel = 'reject' | 'review' | 'insufficient' | 'info';
 
@@ -31,6 +32,18 @@ export interface ReviewAnalysis {
 export interface ImageCheck {
   ipRisk: boolean;
   findings: string[];
+  /** The design looks like a known brand's product: a flag for a person, not a rejection. */
+  resemblance?: { brand: string; reason: string } | null;
+}
+
+/** Gallery photos compared with buyers' own photos of what arrived. */
+export interface PhotoCheck {
+  /** Buyer photos chosen for comparison; `compared` is how many actually loaded. */
+  picked?: number;
+  compared: number;
+  mismatches: { reviewId: string; detail: string }[];
+  /** What buyer photos show about fabric and stitching. */
+  quality: string;
 }
 
 export interface SellerRecord {
@@ -76,11 +89,17 @@ export interface VetResult extends Omit<ScreenResult, 'pass'> {
     lowStarBuyers: number;
     problemBuyers: number;
     problemRate: number;
-    /** With zero problems in n buyers, the true rate could still be up to ~3/n (95%). Null when problems were seen. */
+    /** One-sided 95% Wilson upper bound on the problem rate. */
     problemRateUpperBound: number | null;
     usVariantShare: number;
     chinaLogisticsShare: number;
+    /** Written reviews from the last `recentDays` days. */
+    recentReviews?: number;
+    recentBuyers?: number;
+    recentProblemRate?: number | null;
   };
+  /** Things a person should look at before publishing, with reasons. */
+  flags?: string[];
   issues: AggregatedIssue[];
   listingFixes: string[];
   /** Seller-level problems confirmed on this product; the writer records them on the seller. */
@@ -118,8 +137,7 @@ export function screen(product: ProductSnapshot, freight: FreightQuote[], config
     ),
   );
 
-  const haystack = `${product.title} ${product.attributes['Brand Name'] ?? ''}`.toLowerCase();
-  const ipHits = config.ipBlocklist.filter((w) => new RegExp(`\\b${escapeRe(w)}\\b`, 'i').test(haystack));
+  const ipHits = blockedTerms(`${product.title} ${product.attributes['Brand Name'] ?? ''}`, config.ipBlocklist);
   checks.push(check('ip_title', ipHits.length === 0, 'reject', ipHits.length ? `Mentions ${ipHits.join(', ')}` : 'No brand/likeness terms'));
 
   const usSkuIds = new Set(usSkus.map((s) => s.skuId));
@@ -168,8 +186,10 @@ export interface VetInput {
   reviews: ReviewSet | null;
   analysis: ReviewAnalysis | null;
   imageCheck: ImageCheck | null;
+  photoCheck?: PhotoCheck | null;
   seller: SellerRecord | null;
   config: VettingConfig;
+  now?: number;
 }
 
 export function vet(input: VetInput): VetResult {
@@ -212,7 +232,8 @@ export function vet(input: VetInput): VetResult {
     reasons.push('Reviews could not be fetched');
     return finish('insufficient_data');
   }
-  const trust = trustCheck(reviews, config);
+  const now = input.now ?? Date.now();
+  const trust = trustCheck(reviews, config, now);
   checks.push(...trust.checks);
   const all = reviews.reviews;
   const { usVariantShare, chinaShare } = trust;
@@ -229,10 +250,11 @@ export function vet(input: VetInput): VetResult {
   const textBuyers = buyers.filter((g) => g.some((r) => r.text || r.additionalText)).length;
   const usBuyers = buyers.filter((g) => g[0]!.country === 'US').length;
   const lowStar = new Set(buyers.flatMap((g, i) => (g.some((r) => r.stars <= 3) ? [i] : [])));
-
+  const recentBuyer = new Set(buyers.flatMap((g, i) => (g.some((r) => isRecent(r.date, now, config.recentDays)) ? [i] : [])));
   type Entry = { buyers: Set<number>; reviewIds: Set<string>; quotes: string[]; verified: boolean };
   const issueMap = new Map<IssueCategory, Entry>();
   const reviewById = new Map(all.map((r) => [r.id, r]));
+  const flags: string[] = [];
   for (const iss of analysis?.issues ?? []) {
     if (!(iss.category in ISSUE_RULES)) continue;
     const e = issueMap.get(iss.category) ?? { buyers: new Set<number>(), reviewIds: new Set<string>(), quotes: [], verified: false };
@@ -241,13 +263,22 @@ export function vet(input: VetInput): VetResult {
       e.buyers.add(byReview.get(id)!);
       e.reviewIds.add(id);
     }
-    // The quote must really appear in one of the cited reviews; an unverified issue can't
-    // reject on a single report or strike the seller.
+    // The quote must really appear in one of the cited reviews; if it doesn't, the issue still
+    // counts toward the rates but can't reject on a single report, and the product is flagged.
     if (cited.some((id) => quoteIn(iss.quote, reviewById.get(id)!))) e.verified = true;
     if (iss.quote && e.quotes.length < 5) e.quotes.push(iss.quote);
     if (e.buyers.size) issueMap.set(iss.category, e);
   }
-
+  // Buyers whose own photos show something different from the gallery.
+  for (const m of input.photoCheck?.mismatches ?? []) {
+    const b = byReview.get(m.reviewId);
+    if (b === undefined) continue;
+    const e = issueMap.get('not_as_pictured') ?? { buyers: new Set<number>(), reviewIds: new Set<string>(), quotes: [], verified: true };
+    e.buyers.add(b);
+    e.reviewIds.add(m.reviewId);
+    if (e.quotes.length < 5) e.quotes.push(`Buyer photo: ${m.detail}`);
+    issueMap.set('not_as_pictured', e);
+  }
   // Sizing that goes both ways on the same measurement is a factory-consistency problem,
   // not something a size chart fixes. A buyer who says both (waist loose, inseam short) is
   // compared per measurement, never against themselves.
@@ -274,7 +305,6 @@ export function vet(input: VetInput): VetResult {
       issueMap.set('fit_inconsistent', e);
     }
   }
-
   // A low rating only counts as explained by a defect (B or C). "Runs small" alongside a
   // 1-star review doesn't prove the 1 star was only about size.
   const explained = new Set(
@@ -289,12 +319,11 @@ export function vet(input: VetInput): VetResult {
       verified: true,
     });
   }
-
+  const n = buyers.length;
   const issues: AggregatedIssue[] = [];
   const sellerStrikes: IssueCategory[] = [];
-  const bBuyers = new Set<number>();
+  const problemBuyers = new Set<number>();
   const systemicReject: string[] = [];
-  const systemicReview: string[] = [];
   for (const [category, e] of issueMap) {
     const rule = ruleFor(category);
     let bucket = rule.bucket;
@@ -303,24 +332,29 @@ export function vet(input: VetInput): VetResult {
       category, label: rule.label, bucket, buyers: e.buyers.size, verified: e.verified,
       reviewIds: [...e.reviewIds], quotes: e.quotes, fix: bucket === 'A' ? rule.fix ?? null : null,
     });
-    if (bucket === 'B') e.buyers.forEach((b) => bBuyers.add(b));
+    if (!e.verified) flags.push(`${rule.label}: the quoted complaint wasn't found in the cited review`);
+    if (bucket === 'B') e.buyers.forEach((b) => problemBuyers.add(b));
     if (bucket === 'C') {
       const rejectAt = rule.rejectAt ?? rule.escalateToCAt ?? config.systemicRejectBuyers;
-      const strict = rejectAt === 1 || rule.sellerLevel;
-      if (e.buyers.size >= rejectAt && (e.verified || !strict)) {
-        systemicReject.push(`${rule.label} (${e.buyers.size} buyer${e.buyers.size === 1 ? '' : 's'})`);
+      // Fake tracking, IP and safety reject on one verified report; everything else needs
+      // `rejectAt` buyers and more than `systemicRejectShare` of all buyers.
+      const enough = rejectAt === 1 ? e.buyers.size >= 1 : e.buyers.size >= rejectAt && e.buyers.size / Math.max(1, n) > config.systemicRejectShare;
+      // A quote the code couldn't find in the review flags the product; it can't reject on its own.
+      if (enough && e.verified) {
+        systemicReject.push(`${rule.label} (${e.buyers.size} of ${n} buyers)`);
         if (rule.sellerLevel) sellerStrikes.push(category);
       } else {
-        systemicReview.push(`${rule.label} (${e.buyers.size} buyer${e.buyers.size === 1 ? '' : 's'}${e.verified ? '' : ', quote not found in the review'})`);
-        // Still a problem the customer would have: count it against the rate.
-        e.buyers.forEach((b) => bBuyers.add(b));
+        flags.push(`${rule.label} (${e.buyers.size} buyer${e.buyers.size === 1 ? '' : 's'}): one report of a problem that can't be fixed`);
+        // A customer would still have had this problem: count it against the rate.
+        e.buyers.forEach((b) => problemBuyers.add(b));
       }
     }
   }
   issues.sort((a, b) => b.bucket.localeCompare(a.bucket) || b.buyers - a.buyers);
-
-  const n = buyers.length;
-  const problemRate = n ? bBuyers.size / n : 0;
+  const problemRate = n ? problemBuyers.size / n : 0;
+  const upper = wilsonUpper(problemBuyers.size, n);
+  const recentProblems = [...problemBuyers].filter((b) => recentBuyer.has(b)).length;
+  const recentProblemRate = recentBuyer.size ? recentProblems / recentBuyer.size : null;
   const metrics = {
     ratings: reviews.stats.total || product.reviewCount,
     writtenReviews: all.length,
@@ -328,15 +362,17 @@ export function vet(input: VetInput): VetResult {
     textBuyers,
     usBuyers,
     lowStarBuyers: lowStar.size,
-    problemBuyers: bBuyers.size,
+    problemBuyers: problemBuyers.size,
     problemRate,
-    problemRateUpperBound: n && bBuyers.size === 0 ? Math.min(1, 3 / n) : null,
+    problemRateUpperBound: upper,
     usVariantShare,
     chinaLogisticsShare: chinaShare,
+    recentReviews: all.filter((r) => isRecent(r.date, now, config.recentDays)).length,
+    recentBuyers: recentBuyer.size,
+    recentProblemRate,
   };
   const listingFixes = [...new Set(issues.filter((i) => i.bucket === 'A' && i.fix).map((i) => i.fix!))];
-  const out = (d: Decision) => finish(d, { metrics, issues, listingFixes, sellerStrikes });
-
+  const out = (d: Decision) => finish(d, { metrics, issues, listingFixes, sellerStrikes, flags });
   if (systemicReject.length) {
     reasons.push(`Systemic problems: ${systemicReject.join('; ')}`);
     return out('reject');
@@ -345,43 +381,58 @@ export function vet(input: VetInput): VetResult {
     reasons.push(`${n} unique buyers (need ${config.probationMinBuyers}+)`);
     return out('insufficient_data');
   }
-  if (problemRate > config.maxProblemRate) {
-    reasons.push(`${bBuyers.size} of ${n} buyers had problems customer service would have to absorb (${pct(problemRate)}, cap ${pct(config.maxProblemRate)})`);
-    return out('reject');
-  }
 
-  // 4. Tier.
+  // 4. Tier: rates with an upper bound, not fixed counts.
   const ratings = product.store.ratings;
   const strongSeller = [ratings.asDescribed, ratings.communication, ratings.shipping].every(
     (x) => x !== null && x >= config.strongSellerRating,
   );
+  const rateText = `${problemBuyers.size} of ${n} buyers had problems (${pct(problemRate)}; 95% upper bound ${pct(upper)})`;
+  const isImport = n >= config.importMinBuyers && textBuyers >= config.importMinTextReviews;
+  const bound = isImport ? config.maxProblemUpperBound : config.probationMaxUpperBound;
   let decision: Decision;
-  if (n >= config.importMinBuyers && textBuyers >= config.importMinTextReviews) {
+  if (isImport && upper <= config.maxProblemUpperBound) {
     decision = 'import';
-    reasons.push(`${n} buyers, ${pct(problemRate)} with absorbable problems`);
-  } else if (strongSeller) {
+    reasons.push(rateText);
+  } else if (n < config.importMinBuyers && strongSeller && upper <= config.probationMaxUpperBound) {
     decision = 'probation';
-    reasons.push(`${n} buyers (${textBuyers} with text): enough for probation with a strong seller, not a plain import`);
+    reasons.push(`${n} buyers (${textBuyers} with text) and a strong seller: probation. ${rateText}`);
   } else {
-    reasons.push(`${n} buyers and the seller's ratings aren't strong enough (${config.strongSellerRating}+) to back probation`);
+    // Anything that doesn't pass is "not enough data" and is looked at again later, as the rules say.
+    if (problemRate > bound) {
+      reasons.push(`${rateText}: even the observed rate is over the ${pct(bound)} limit`);
+    } else if (!isImport && n >= config.importMinBuyers) {
+      reasons.push(`${n} buyers but only ${textBuyers} with written reviews (a full import needs ${config.importMinTextReviews}+)`);
+    } else if (!isImport && !strongSeller) {
+      reasons.push(`${n} buyers (${textBuyers} with text): a plain import needs ${config.importMinBuyers}+ buyers and ${config.importMinTextReviews}+ written reviews, and the store's ratings aren't ${config.strongSellerRating}+ for probation`);
+    } else {
+      reasons.push(`${rateText}: not enough buyers yet to prove the rate is under ${pct(bound)}`);
+    }
     return out('insufficient_data');
   }
 
   // 5. Anything a person should look at first.
-  const review: string[] = [...systemicReview];
-  if (s.suspiciousShipping) review.push('Shipping price is implausibly low for the carrier (possible label fraud)');
-  for (const c of checks) if (!c.pass && c.level === 'review') review.push(c.detail);
-  if (input.seller?.linkedTo.length) review.push(`Store resembles blocked seller(s): ${input.seller.linkedTo.join(', ')}`);
-  if (!input.imageCheck) review.push('Images were not checked for brands or likenesses');
-  if (review.length) {
-    reasons.push(...review.map((r) => `Needs review: ${r}`));
+  if (s.suspiciousShipping) flags.push('Shipping price is implausibly low for the carrier (possible label fraud)');
+  for (const c of checks) if (!c.pass && c.level === 'review') flags.push(c.detail);
+  if (input.seller?.linkedTo.length) flags.push(`Store resembles blocked seller(s): ${input.seller.linkedTo.join(', ')}`);
+  if (!input.imageCheck) flags.push('Images were not checked for brands or likenesses');
+  if (input.imageCheck?.resemblance) flags.push(`Design resembles ${input.imageCheck.resemblance.brand}: ${input.imageCheck.resemblance.reason}`);
+  // No buyer photos at all isn't a flag (the review page shows it); a comparison that never ran is.
+  if (!input.photoCheck) flags.push('Buyer photos were not compared with the gallery');
+  else if ((input.photoCheck.picked ?? 0) > 0 && !input.photoCheck.compared) flags.push("Buyer photos couldn't be loaded, so they weren't compared with the gallery");
+  flags.push(...fakeReviewSignals(reviews, config).flags.map((f) => `Possible fake reviews: ${f}`));
+  if (recentProblemRate !== null && metrics.recentBuyers >= 5 && problemRate > 0 && recentProblemRate > config.recentProblemRatio * problemRate) {
+    flags.push(`Problems are rising: ${pct(recentProblemRate)} of buyers in the last ${config.recentDays} days vs ${pct(problemRate)} overall`);
+  }
+  if (flags.length) {
+    reasons.push(...flags.map((r) => `Needs review: ${r}`));
     return out(decision === 'import' ? 'needs_review' : 'probation');
   }
   return out(decision);
 }
 
 /** Are these the seller's own reviews, for US-warehouse variants, shipped by US carriers? */
-export function trustCheck(reviews: ReviewSet, config: VettingConfig) {
+export function trustCheck(reviews: ReviewSet, config: VettingConfig, now = Date.now()) {
   const pooled = isPooled(reviews);
   const all = reviews.reviews;
   const usVariantShare = all.length ? all.filter((r) => r.shipsFromUS).length / all.length : 0;
@@ -392,6 +443,10 @@ export function trustCheck(reviews: ReviewSet, config: VettingConfig) {
     check('reviews_us_variant', usVariantShare >= config.minUsVariantShare, 'insufficient', `${pct(usVariantShare)} of reviews are for US-warehouse variants`),
     check('reviews_us_carrier', chinaShare <= config.maxChinaLogisticsShare, 'insufficient', `${pct(chinaShare)} of reviewed orders shipped from China`),
   ];
+  const recent = all.filter((r) => isRecent(r.date, now, config.recentDays)).length;
+  checks.push(
+    check('recent_reviews', recent >= config.minRecentReviews, 'insufficient', `${recent} reviews in the last ${config.recentDays} days (need ${config.minRecentReviews}+)`),
+  );
   return { pass: checks.every((c) => c.pass), checks, usVariantShare, chinaShare };
 }
 
@@ -459,4 +514,65 @@ function pct(x: number): string {
 
 function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+
+function plain(s: string): string {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+/** Ordinary words one letter away from a brand, which must not count as misspellings. */
+const NOT_MISSPELLINGS = new Set(['channel', 'chapel', 'harlem', 'metallic', 'rude', 'skins', 'skim', 'converge', 'prado', 'diesel', 'polos', 'vents']);
+
+/** Edit distance with adjacent swaps (Damerau–Levenshtein, optimal string alignment). */
+export function editDistance(a: string, b: string): number {
+  const d: number[][] = Array.from({ length: a.length + 1 }, (_, i) => [i, ...new Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0]![j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      d[i]![j] = Math.min(d[i - 1]![j]! + 1, d[i]![j - 1]! + 1, d[i - 1]![j - 1]! + cost);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i]![j] = Math.min(d[i]![j]!, d[i - 2]![j - 2]! + 1);
+    }
+  }
+  return d[a.length]![b.length]!;
+}
+
+/**
+ * Blocked words in a title: exact matches, plus near-misses of brand names ("Addidas",
+ * "Carhart", "Calvin Klien") that sellers use to dodge filters. Brand names of 5+ letters may be
+ * off by one letter; 10+ letters (including spaces) by two.
+ */
+export function blockedTerms(text: string, blocklist: string[]): string[] {
+  const hay = plain(text);
+  const tokens = hay.replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
+  const hits: string[] = [];
+  for (const w of blocklist) {
+    const term = plain(w).trim();
+    if (!term) continue;
+    if (new RegExp(`\\b${escapeRe(term)}\\b`, 'i').test(hay)) {
+      hits.push(term);
+      continue;
+    }
+    // Plurals of single-word brands ("Nikes", "Levis", "Pumas").
+    if (!term.includes(' ') && term.length >= 3 && tokens.includes(`${term}s`) && !NOT_MISSPELLINGS.has(`${term}s`)) {
+      hits.push(`${term}s (looks like ${term})`);
+      continue;
+    }
+    if (NON_BRAND_TERMS.has(term)) continue;
+    const parts = term.replace(/[^a-z0-9]+/g, ' ').trim().split(' ');
+    const joined = parts.join(' ');
+    if (joined.length < 5) continue;
+    const allowed = joined.length >= 10 ? 2 : 1;
+    for (let i = 0; i + parts.length <= tokens.length; i++) {
+      const window = tokens.slice(i, i + parts.length).join(' ');
+      if (window === joined || NOT_MISSPELLINGS.has(window)) continue;
+      if (window[0] !== joined[0] || Math.abs(window.length - joined.length) > allowed) continue;
+      if (editDistance(window, joined) <= allowed) {
+        hits.push(`${window} (looks like ${term})`);
+        break;
+      }
+    }
+  }
+  return hits;
 }

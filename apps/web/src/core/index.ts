@@ -17,3 +17,6 @@ export * from './firestore/model.ts';
 export * from './firestore/repo.ts';
 export * from './stages.ts';
 export * from './jobs.ts';
+export * from './vetting/stats.ts';
+export * from './ai/compare-photos.ts';
+export * from './quality.ts';

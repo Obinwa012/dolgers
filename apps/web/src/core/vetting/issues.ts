@@ -50,6 +50,7 @@ export const ISSUE_RULES = {
   material_mismatch: { bucket: 'C', label: 'Material differs from the listing' },
   quality_drop_repeat: { bucket: 'C', label: 'Quality dropped on repeat orders', sellerLevel: true },
   fit_inconsistent: { bucket: 'C', label: 'Sizing inconsistent between units (both runs big and small)' },
+  not_as_pictured: { bucket: 'C', label: "Delivered item doesn't match the product photos (design, cut or print)" },
   fake_tracking: { bucket: 'C', label: 'Fake/fraudulent tracking or postage', rejectAt: 1, sellerLevel: true },
   counterfeit_or_ip: { bucket: 'C', label: 'Counterfeit, brand or likeness', rejectAt: 1 },
   unsafe: { bucket: 'C', label: 'Safety hazard (skin reaction, chemical smell, sharp parts)', rejectAt: 1 },

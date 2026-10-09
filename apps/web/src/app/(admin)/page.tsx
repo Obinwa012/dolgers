@@ -9,14 +9,16 @@ export const metadata = { title: 'Overview' };
 
 export default async function Overview() {
   await requireAdmin();
-  const [setup, products, candidates, blocked, jobs, review] = await Promise.all([
+  const [setup, products, candidates, blocked, jobs, review, live] = await Promise.all([
     setupStatus(),
     productCounts(),
     candidateCounts(),
     blockedSellerCount(),
     repo().listJobs(6),
     repo().listProducts(['pending_review']),
+    repo().listProducts(['live', 'paused']),
   ]);
+  const flagged = [...live, ...review].filter((p) => p.flags?.length).sort((a, b) => Number(!!b.flags!.some((f) => f.urgent)) - Number(!!a.flags!.some((f) => f.urgent)));
   const now = Date.now();
   const steps = [
     { done: setup.aeKeys, label: 'Add your AliExpress app key and secret', href: '/settings?tab=aliexpress' },
@@ -28,6 +30,7 @@ export default async function Overview() {
     { done: setup.claudeKey, label: 'Add your Claude API key', href: '/settings?tab=claude' },
     { done: candidates.new + candidates.published + candidates.rejected + candidates.screened_out > 0, label: 'Import men’s items from the US feeds', href: '/run' },
     { done: products.live + products.pending_review > 0, label: 'Vet the queue', href: '/run' },
+    { done: products.live > 0, label: 'Review and publish your first product', href: '/products?status=pending_review' },
   ];
   const ready = steps.every((s) => s.done);
   const running = jobs.find((j) => j.status === 'running');
@@ -53,6 +56,19 @@ export default async function Overview() {
         <Link href={`/run?job=${failed.id}`} className="mb-6 block rounded-lg border border-bad/30 bg-bad-bg px-4 py-3 text-sm text-bad">
           The last <strong className="capitalize">{failed.type}</strong> job stopped with an error: {failed.error ?? 'unknown error'} <span className="font-semibold underline">Open</span>
         </Link>
+      )}
+      {flagged.length > 0 && (
+        <Card title="New flags from Monitor and your customers" className="mb-6">
+          <ul className="divide-y divide-line">
+            {flagged.slice(0, 8).map((p) => (
+              <li key={p.id} className="py-2 text-sm">
+                <Link href={`/products/${p.id}`} className="font-semibold hover:text-denim">{p.title}</Link>{' '}
+                <Badge status={p.status}>{PRODUCT_STATUS_LABEL[p.status]}</Badge>
+                <span className={`block ${p.flags!.some((f) => f.urgent) ? 'font-semibold text-bad' : 'text-warn'}`}>{p.flags!.at(-1)!.text}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
       )}
       {tokenSoon && (
         <div className="mb-6 rounded-lg border border-warn/30 bg-warn-bg px-4 py-3 text-sm text-warn">

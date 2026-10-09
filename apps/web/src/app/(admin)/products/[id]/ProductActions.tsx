@@ -11,13 +11,8 @@ export function ProductActions({ id, status, supplierUrl }: { id: string; status
   const router = useRouter();
   return (
     <div className="flex flex-wrap items-start gap-2">
-      {status !== 'live' && status !== 'retired' && (
-        <ActionButton variant="primary" action={() => productAction(id, 'approve')} confirm="Put this product live in your catalog?">
-          Approve &amp; go live
-        </ActionButton>
-      )}
       {status === 'live' && <ActionButton action={() => productAction(id, 'pause')}>Pause</ActionButton>}
-      <ActionButton action={() => productAction(id, 'reprice')} confirm="Recalculate every variant’s price from today’s landed cost?">
+      <ActionButton action={() => productAction(id, 'reprice')} confirm="Recalculate every variant’s price from today’s cost?">
         Reprice
       </ActionButton>
       <ActionButton
@@ -28,22 +23,13 @@ export function ProductActions({ id, status, supplierUrl }: { id: string; status
           return j.ok ? { ok: true as const } : j;
         }}
         then={() => router.push('/run')}
-        confirm="Vet this product again from scratch? It keeps its current status until the new decision."
+        confirm="Vet this product again from scratch? Your review ticks are cleared when it finishes."
       >
         Re-vet
       </ActionButton>
-      {status !== 'retired' ? (
+      {status !== 'retired' && (
         <ActionButton variant="danger" action={() => productAction(id, 'retire')} confirm="Retire this product? It leaves the catalog and won’t be re-imported.">
           Retire
-        </ActionButton>
-      ) : (
-        <ActionButton
-          variant="danger"
-          action={() => productAction(id, 'delete')}
-          then={() => router.push('/products')}
-          confirm="Delete this product and its sourcing and vetting records permanently?"
-        >
-          Delete
         </ActionButton>
       )}
       {supplierUrl && (
