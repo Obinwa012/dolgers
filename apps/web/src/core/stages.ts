@@ -69,8 +69,10 @@ export interface StepResult {
 export async function importFeedPage(ctx: PipelineContext, feed: string, page: number) {
   const now = (ctx.now ?? Date.now)();
   const res = await ctx.ae.feedPage(feed, { categoryId: MENS_CLOTHING, page, sort: 'volumeDesc' });
-  const items: CandidateDoc[] = res.items
-    .filter((it) => !it.categoryId || it.categoryId === MENS_CLOTHING)
+  const mens = res.items.filter((it) => !it.categoryId || it.categoryId === MENS_CLOTHING);
+  // Too few sales to have the reviews vetting needs: don't fill the queue with them.
+  const items: CandidateDoc[] = mens
+    .filter((it) => it.recentSales >= ctx.config.importMinSales)
     .map((it) => ({
       subId: it.subId,
       mainId: null,
@@ -90,7 +92,7 @@ export async function importFeedPage(ctx: PipelineContext, feed: string, page: n
       updatedAt: now,
     }));
   const r = await ctx.repo.upsertCandidates(items);
-  return { ...r, seen: items.length, finished: res.finished, total: res.total };
+  return { ...r, seen: mens.length, kept: items.length, tooFewSales: mens.length - items.length, finished: res.finished, total: res.total };
 }
 
 // ---------------------------------------------------------------- vetting stages

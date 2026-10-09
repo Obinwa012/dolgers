@@ -45,6 +45,7 @@ export const OUTCOME_LABEL: Record<string, string> = {
   screened_out: 'Screened out',
   error: 'Error',
   seen: 'Items seen',
+  tooFewSales: 'Too few sales',
   added: 'New in queue',
   updated: 'Already queued',
   changed: 'Changed',

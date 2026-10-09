@@ -146,6 +146,7 @@ const ConfigInput = z.object({
   suspiciousShippingMaxFeeCents: Num.int().min(0),
   suspiciousShippingMaxItemCents: Num.int().min(0),
   recheckAfterDays: Num.int().min(1),
+  importMinSales: Num.int().min(0),
   maxRefundRate: Share,
   refundRateMinOrders: Num.int().min(1),
   pricing: z.object({

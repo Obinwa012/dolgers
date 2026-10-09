@@ -17,7 +17,7 @@ function ctx(repo: MemoryRepo, fetchImpl: typeof fetch): PipelineContext {
       throw new Error('no AI in this test');
     },
     models: { fast: 'f', careful: 'c' },
-    config: DEFAULT_CONFIG,
+    config: { ...DEFAULT_CONFIG, importMinSales: 0 },
     log: () => {},
     sleep: async () => {},
   };
@@ -56,6 +56,20 @@ describe('import job', () => {
     expect(repo.candidates.size).toBe(5);
     expect([...repo.candidates.values()].every((x) => x.department === 'men' && x.feeds.length === 2)).toBe(true);
     expect(done.log.at(-1)?.text).toMatch(/Import finished/);
+  });
+});
+
+describe('import filter', () => {
+  it('only imports items with enough sales to have been reviewed', async () => {
+    const repo = new MemoryRepo();
+    const c = { ...ctx(repo, feedFetch), config: DEFAULT_CONFIG };
+    const job = newJob('import', { pages: 1, feeds: ['A'] }, 'admin');
+    await repo.createJob(job);
+    const done = await runToEnd(c, job.id);
+    // The fixture page has 5 items with 209, 13, 18, 199 and 47 sales; 80+ keeps two.
+    expect(repo.candidates.size).toBe(2);
+    expect(done.counts.tooFewSales).toBe(3);
+    expect(done.log.at(-2)?.text).toMatch(/5 men's items, 2 with 80\+ sales/);
   });
 });
 
