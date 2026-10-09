@@ -16,7 +16,7 @@ import { writeListing } from './listing/listing.ts';
 import { assembleReviews, fetchReviewPage, groupBuyers } from './reviews/reviews.ts';
 import type { FreightQuote, ProductSnapshot, Review, ReviewSet, Sku } from './types.ts';
 import type { VettingConfig } from './vetting/config.ts';
-import { fitEvidenceFor, screen, trustCheck, vet, type VetResult } from './vetting/engine.ts';
+import { bestCase, fitEvidenceFor, screen, trustCheck, vet, type VetResult } from './vetting/engine.ts';
 import { ISSUE_RULES } from './vetting/issues.ts';
 import { profitCents, retailPriceCents } from './vetting/pricing.ts';
 
@@ -245,14 +245,10 @@ async function stageReviews(ctx: PipelineContext, w: WorkState): Promise<StepRes
   if (!trust.pass) {
     return finish(ctx, w, 'insufficient_data', 'insufficient_data', trust.checks.filter((c) => !c.pass).map((c) => c.detail), ctx.config.recheckAfterDays);
   }
-  // The buyer count is known before any AI call: don't pay to analyse what can't qualify.
-  const n = groupBuyers(reviews.reviews).length;
-  const r = w.product!.store.ratings;
-  const strong = [r.asDescribed, r.communication, r.shipping].every((x) => x !== null && x >= ctx.config.strongSellerRating);
-  if (n < ctx.config.probationMinBuyers || (n < ctx.config.importMinBuyers && !strong)) {
-    const why = `${n} unique buyers${n >= ctx.config.probationMinBuyers ? ' and the seller is not strong enough for probation' : ''}`;
-    return finish(ctx, w, 'insufficient_data', 'insufficient_data', [why], ctx.config.recheckAfterDays);
-  }
+  // Buyers, written reviews and low ratings are known before any AI call: don't pay Claude to
+  // analyse a product that can't pass even if every review turns out to be clean.
+  const best = bestCase(reviews.reviews, w.product!, ctx.config);
+  if (!best.canPass) return finish(ctx, w, 'insufficient_data', 'insufficient_data', [best.reason], ctx.config.recheckAfterDays);
   w.stage = 'images';
   return { work: w, finished: false };
 }
@@ -265,6 +261,9 @@ async function reviewSet(ctx: PipelineContext, w: WorkState): Promise<ReviewSet>
 
 async function stageImages(ctx: PipelineContext, w: WorkState): Promise<StepResult> {
   const p = w.product!;
+  // Vetting saved under older, looser rules may resume here: check again before paying for AI.
+  const best = bestCase(await ctx.repo.getWorkReviews(w.subId), p, ctx.config);
+  if (!best.canPass) return finish(ctx, w, 'insufficient_data', 'insufficient_data', [best.reason], ctx.config.recheckAfterDays);
   // Gallery and variant photos: print designs usually show on the variant images.
   const variantImages = [...new Set(p.skus.filter((k) => k.shipsFrom === 'United States').map((k) => k.image).filter((u): u is string => !!u))];
   w.imageCheck = await checkImages(ctx.model(), ctx.models, [...p.images.slice(0, 4), ...variantImages.slice(0, 4)], p.title, ctx.fetchImpl);

@@ -17,7 +17,7 @@ const SKIP_AFTER = 3;
 const STAGE_RETRIES = 3;
 /** Credential problems fail every step the same way, so they stop the job instead of failing items. */
 export const AUTH_ERROR =
-  /access token|refresh token|IllegalAccessToken|TokenExpired|NoToken|authoriz|signature|appkey|app key|api key|authentication_error|permission_error|credit balance|\b401\b|\b403\b/i;
+  /access token|refresh token|IllegalAccessToken|TokenExpired|NoToken|authoriz|signature|appkey|app key|api key|authentication_error|permission_error|credit balance|recognise the model|\b401\b|\b403\b/i;
 
 export function newJob(type: JobType, params: JobDoc['params'], createdBy: string, now = Date.now()): JobDoc {
   return {

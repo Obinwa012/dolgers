@@ -2,7 +2,7 @@ import type { FreightQuote, ProductSnapshot, Review, ReviewSet, ShippingOption }
 import { groupBuyers, isChinaLogistics, isPooled } from '../reviews/reviews.ts';
 import { NON_BRAND_TERMS, type VettingConfig } from './config.ts';
 import { type Bucket, type IssueCategory, ISSUE_RULES, ruleFor } from './issues.ts';
-import { fakeReviewSignals, isRecent, wilsonUpper } from './stats.ts';
+import { buyersNeeded, fakeReviewSignals, isRecent, wilsonUpper } from './stats.ts';
 
 export type CheckLevel = 'reject' | 'review' | 'insufficient' | 'info';
 
@@ -429,6 +429,38 @@ export function vet(input: VetInput): VetResult {
     return out(decision === 'import' ? 'needs_review' : 'probation');
   }
   return out(decision);
+}
+
+/**
+ * The best a product could do before any AI is paid for. Every 1–3★ buyer will count as a problem
+ * whatever the reviews say (explained by a defect, or unexplained), so with no other problems the
+ * bound can only be this low. If even that fails, analysing the reviews can't change the outcome.
+ */
+export function bestCase(reviews: Review[], product: ProductSnapshot, config: VettingConfig): { canPass: boolean; reason: string } {
+  const buyers = groupBuyers(reviews);
+  const n = buyers.length;
+  const text = buyers.filter((g) => g.some((r) => r.text || r.additionalText)).length;
+  const low = buyers.filter((g) => g.some((r) => r.stars <= 3)).length;
+  const r = product.store.ratings;
+  const strong = [r.asDescribed, r.communication, r.shipping].every((x) => x !== null && x >= config.strongSellerRating);
+  if (n < config.probationMinBuyers) return { canPass: false, reason: `${n} unique buyers (need ${config.probationMinBuyers}+)` };
+  const isImport = n >= config.importMinBuyers && text >= config.importMinTextReviews;
+  if (!isImport && n >= config.importMinBuyers) {
+    return { canPass: false, reason: `${n} buyers but only ${text} with written reviews (a full import needs ${config.importMinTextReviews}+)` };
+  }
+  if (!isImport && !strong) {
+    return { canPass: false, reason: `${n} unique buyers and the seller's ratings aren't ${config.strongSellerRating}+ for probation (a full import needs ${config.importMinBuyers}+ buyers)` };
+  }
+  const bound = isImport ? config.maxProblemUpperBound : config.probationMaxUpperBound;
+  const upper = wilsonUpper(low, n);
+  if (upper > bound) {
+    const needed = buyersNeeded(low, bound);
+    return {
+      canPass: false,
+      reason: `${low} of ${n} buyers rated it 1–3★; even if every other review is clean, the 95% upper bound is ${pct(upper)}, over the ${pct(bound)} limit${Number.isFinite(needed) ? ` (about ${needed} buyers needed)` : ''}`,
+    };
+  }
+  return { canPass: true, reason: '' };
 }
 
 /** Are these the seller's own reviews, for US-warehouse variants, shipped by US carriers? */
