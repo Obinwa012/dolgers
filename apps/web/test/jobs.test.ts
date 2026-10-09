@@ -142,7 +142,7 @@ describe('vet job', () => {
   });
 
   it('tells credential problems apart from ordinary failures', () => {
-    for (const m of ['AliExpress IllegalAccessToken: The specified access token is invalid', 'Claude API key is not set. Add it in Settings → Claude.', '401 {"type":"authentication_error"}', 'Your credit balance is too low']) {
+    for (const m of ['AliExpress IllegalAccessToken: The specified access token is invalid', 'Claude API key is not set. Add it in Settings → Claude.', '401 {"type":"authentication_error"}', 'Your credit balance is too low', "Your Claude account is out of credit (credit balance too low). Add credit at console.anthropic.com → Plans & Billing, then press Resume."]) {
       expect(AUTH_ERROR.test(m)).toBe(true);
     }
     for (const m of ['Model output failed validation (end_turn): Unexpected token } in JSON', 'max_tokens reached', 'fetch failed', 'AliExpress AppApiCallLimit: ban will last 1 seconds']) {

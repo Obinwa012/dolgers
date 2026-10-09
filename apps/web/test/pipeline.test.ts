@@ -199,7 +199,7 @@ describe('processCandidate', () => {
   });
 
   it('rejects a fake-postage seller and blocks its other listings', async () => {
-    const rs = Array.from({ length: 70 }, () => review({ skuInfo: 'Color:Black Size:M Ships From:United States' }));
+    const rs = Array.from({ length: 100 }, () => review({ skuInfo: 'Color:Black Size:M Ships From:United States' }));
     rs[0]!.text = 'Flagged for fraudulent shipping, they used fake postage';
     rs[0]!.stars = 1;
     const repo = new MemoryRepo();
@@ -327,5 +327,17 @@ describe('monitorProduct', () => {
     expect(second.outcome).toBe('screened_out');
     expect(second.reasons[0]).toMatch(/As described 3.5.*store checked/);
     expect(productCalls).toBe(1);
+  });
+
+  it('does not pay for AI on a product that cannot pass even with clean reviews', async () => {
+    const rs = Array.from({ length: 34 }, () => review());
+    const repo = new MemoryRepo();
+    const strong = fx('product_cargo.json');
+    const model = new FakeModel({});
+    const fetchImpl = aeFetch('product_cargo.json', 'freight_paid.json', (b) => (b.get('method') === 'aliexpress.ds.product.get' ? strong : undefined));
+    const out = await processCandidate(ctx(repo, fetchImpl, model, reviewSet(rs)), cand('3256811859422872'));
+    expect(out.outcome).toBe('insufficient_data');
+    expect(out.reasons[0]).toMatch(/upper bound is 7\.4%.*about 52 buyers needed/);
+    expect(model.calls).toHaveLength(0);
   });
 });

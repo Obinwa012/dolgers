@@ -45,13 +45,17 @@ export class ClaudeModel implements StructuredModel {
     );
     let lastErr: unknown;
     for (let attempt = 0; attempt < 2; attempt++) {
-      const res = await this.client.messages.create({
-        model: o.model,
-        max_tokens: o.maxTokens ?? 8000,
-        system: o.system,
-        messages: [{ role: 'user', content }],
-        output_config: { format: { type: 'json_schema', schema: jsonSchema } },
-      });
+      const res = await this.client.messages
+        .create({
+          model: o.model,
+          max_tokens: o.maxTokens ?? 8000,
+          system: o.system,
+          messages: [{ role: 'user', content }],
+          output_config: { format: { type: 'json_schema', schema: jsonSchema } },
+        })
+        .catch((e: unknown) => {
+          throw friendlyError(e);
+        });
       const text = res.content.find((b): b is Anthropic.TextBlock => b.type === 'text')?.text ?? '';
       try {
         return o.schema.parse(JSON.parse(text));
@@ -83,4 +87,27 @@ function sniff(b: Buffer): ImageInput['mediaType'] | null {
   if (b.subarray(0, 4).toString('ascii') === 'RIFF' && b.subarray(8, 12).toString('ascii') === 'WEBP') return 'image/webp';
   if (b.subarray(0, 3).toString('ascii') === 'GIF') return 'image/gif';
   return null;
+}
+
+/**
+ * Plain-English versions of the API errors an admin can fix. The wording keeps the words the job
+ * runner looks for ("credit balance", "API key"), so these stop the whole job instead of failing
+ * every item one by one.
+ */
+export function friendlyError(e: unknown): Error {
+  const msg = e instanceof Error ? e.message : String(e);
+  const status = (e as { status?: number }).status;
+  if (/credit balance/i.test(msg)) {
+    return new Error('Your Claude account is out of credit (credit balance too low). Add credit at console.anthropic.com → Plans & Billing, then press Resume.');
+  }
+  if (status === 401 || /authentication_error|invalid x-api-key/i.test(msg)) {
+    return new Error('Claude rejected the API key (401). Check it in Settings → Claude, then press Resume.');
+  }
+  if (status === 403 || /permission_error/i.test(msg)) {
+    return new Error('This Claude API key isn’t allowed to use the model (403). Check the key and model in Settings → Claude.');
+  }
+  if (status === 404 || /not_found_error/i.test(msg)) {
+    return new Error(`Claude doesn't recognise the model name. Check the models in Settings → Claude. (${msg.slice(0, 160)})`);
+  }
+  return e instanceof Error ? e : new Error(msg);
 }
