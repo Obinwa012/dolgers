@@ -1,7 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import type { CandidateDoc, DeletionDoc, ProductDoc, QualityEvent } from '@/core/firestore/model.ts';
+import { FieldValue } from 'firebase-admin/firestore';
+import type { CandidateDoc, CandidateStatus, DeletionDoc, ProductDoc, QualityEvent } from '@/core/firestore/model.ts';
 import { applyQualityEvent } from '@/core/quality.ts';
 import { ISSUE_RULES, type IssueCategory } from '@/core/vetting/issues.ts';
 import { CLEARED_CHECKS, pauseSellerProducts, repriceVariants } from '@/core/stages.ts';
@@ -247,6 +248,88 @@ export async function sellerAction(storeId: string, action: 'block' | 'unblock')
     }
     revalidatePath('/sellers');
     return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export type BulkAction = 'delete' | 'skip' | 'requeue';
+
+async function vetJobRunning() {
+  return (await repo().listJobs(20)).some((j) => j.status === 'running' && j.type === 'vet');
+}
+
+/**
+ * Applies one action to many queue items. Delete removes them (a later import can add them back);
+ * Skip keeps a record so they are never vetted or re-imported; Requeue puts them back in line.
+ */
+async function applyBulk(action: BulkAction, items: CandidateDoc[], who: string, vetRunning: boolean) {
+  const now = Date.now();
+  let done = 0;
+  let skipped = 0;
+  const batchSize = 400;
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = db().batch();
+    const vetting: string[] = [];
+    for (const c of items.slice(i, i + batchSize)) {
+      // An item a running vet job may be working on is left alone.
+      if (c.status === 'vetting' && vetRunning) {
+        skipped++;
+        continue;
+      }
+      if (c.status === 'published' && action !== 'delete') {
+        skipped++;
+        continue;
+      }
+      const ref = db().collection('candidates').doc(c.subId);
+      if (action === 'delete') batch.delete(ref);
+      else if (action === 'skip') {
+        batch.set(ref, { status: 'rejected', nextCheckAt: null, reasons: [`Skipped by ${who}`], queueSales: FieldValue.delete(), updatedAt: now }, { merge: true });
+      } else {
+        batch.set(ref, { status: 'new', nextCheckAt: null, attempts: 0, reasons: [], queueSales: c.recentSales ?? 0, updatedAt: now }, { merge: true });
+      }
+      if (c.status === 'vetting') vetting.push(c.subId);
+      done++;
+    }
+    await batch.commit();
+    for (const id of vetting) await repo().deleteWork(id);
+  }
+  return { done, skipped };
+}
+
+export async function bulkCandidates(action: BulkAction, subIds: string[]): Promise<Result<{ done: number; skipped: number }>> {
+  try {
+    const me = await adminOrThrow();
+    const ids = [...new Set(subIds)].slice(0, 1000);
+    if (!ids.length) return { ok: false, error: 'Nothing selected.' };
+    const snaps = await db().getAll(...ids.map((id) => db().collection('candidates').doc(id)));
+    const items = snaps.filter((s) => s.exists).map((s) => s.data() as CandidateDoc);
+    const r = await applyBulk(action, items, me.email, await vetJobRunning());
+    revalidatePath('/queue');
+    return { ok: true, ...r };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** One chunk of "all items in this tab". The page calls it until nothing is left. */
+export async function bulkCandidatesByStatus(
+  action: BulkAction,
+  status: CandidateStatus,
+): Promise<Result<{ done: number; skipped: number; remaining: number }>> {
+  try {
+    const me = await adminOrThrow();
+    if (action === 'requeue' && status === 'new') return { ok: false, error: 'These are already waiting.' };
+    if (action === 'skip' && status === 'rejected') return { ok: false, error: 'These are already skipped or rejected.' };
+    const vetRunning = await vetJobRunning();
+    if (status === 'vetting' && vetRunning) return { ok: false, error: 'A vet job is running. Stop it first.' };
+    const snap = await db().collection('candidates').where('status', '==', status).limit(1000).get();
+    const items = snap.docs.map((d) => d.data() as CandidateDoc);
+    const r = await applyBulk(action, items, me.email, vetRunning);
+    const remaining = (await db().collection('candidates').where('status', '==', status).count().get()).data().count;
+    revalidatePath('/queue');
+    // Items that were left alone stay in the tab; don't loop on them forever.
+    return { ok: true, ...r, remaining: r.done ? remaining : 0 };
   } catch (e) {
     return fail(e);
   }
