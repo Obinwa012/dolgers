@@ -144,7 +144,7 @@ export function Runner({
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card title="1 · Import">
-          <p className="mb-3 text-ink-soft">Adds men’s clothing from the US feeds to the queue, best sellers first. Nothing is published by an import.</p>
+          <p className="mb-3 text-ink-soft">Adds men’s clothing from the US feeds to the queue, best sellers first, skipping items with too few sales to have been reviewed enough (set in Settings → DOLGERS rules). Nothing is published by an import.</p>
           <Field label="Pages per feed" hint="Each page is about 50 items.">
             <input type="number" min={1} max={50} className={input} value={pages} onChange={(e) => setPages(Number(e.target.value))} />
           </Field>

@@ -124,9 +124,10 @@ async function importStep(ctx: PipelineContext, job: JobDoc, patch: Partial<JobD
     }
     failures = 0;
     counts.seen = (counts.seen ?? 0) + r.seen;
+    counts.tooFewSales = (counts.tooFewSales ?? 0) + r.tooFewSales;
     counts.added = (counts.added ?? 0) + r.added;
     counts.updated = (counts.updated ?? 0) + r.updated;
-    say(`${feed}, page ${page}: ${r.seen} men's items (${r.added} new)`);
+    say(`${feed}, page ${page}: ${r.seen} men's items, ${r.kept} with ${ctx.config.importMinSales}+ sales (${r.added} new)`);
     if (r.finished || page >= pages) {
       feedIndex += 1;
       page = 1;

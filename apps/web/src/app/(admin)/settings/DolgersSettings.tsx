@@ -80,8 +80,11 @@ const GROUPS: { title: string; fields: Def[] }[] = [
     ],
   },
   {
-    title: 'Rechecks',
-    fields: [{ path: 'recheckAfterDays', label: 'Look again at “not enough data” items after (days)', kind: 'int', hint: '' }],
+    title: 'Rechecks and imports',
+    fields: [
+      { path: 'recheckAfterDays', label: 'Look again at “not enough data” items after (days)', kind: 'int', hint: '' },
+      { path: 'importMinSales', label: 'Only import items with at least this many sales', kind: 'int', hint: 'About 1 in 4–6 buyers leaves a review, so ~80 sales is roughly where an item can have the 20 reviews needed to vet it. 0 imports everything.' },
+    ],
   },
 ];
 

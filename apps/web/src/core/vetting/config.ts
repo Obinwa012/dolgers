@@ -51,6 +51,11 @@ export interface VettingConfig {
   suspiciousShippingMaxItemCents: number;
   /** Rechecks for products that were "insufficient data". */
   recheckAfterDays: number;
+  /**
+   * Feed items with fewer sales than this aren't imported: about 1 in 4–6 buyers leaves a review,
+   * so ~80 sales is roughly where a listing can have the 20 reviews needed to vet it at all.
+   */
+  importMinSales: number;
   /** Your own orders: pause a product whose refund rate passes this, once it has enough orders. */
   maxRefundRate: number;
   refundRateMinOrders: number;
@@ -96,6 +101,7 @@ export const DEFAULT_CONFIG: VettingConfig = {
   suspiciousShippingMaxFeeCents: 399,
   suspiciousShippingMaxItemCents: 800,
   recheckAfterDays: 30,
+  importMinSales: 80,
   maxRefundRate: 0.1,
   refundRateMinOrders: 10,
   pricing: {
